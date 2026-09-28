@@ -2,6 +2,9 @@ package com.sleeptime.lock
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.PorterDuff
+import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -10,6 +13,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -45,6 +49,16 @@ class SleepLockView(
     private lateinit var title: TextView
     private lateinit var ghost: TextView
     private lateinit var hint: TextView
+
+    // ---- 下拉面板（只放第三方 App 真能做的开关）----
+    private lateinit var panel: LinearLayout
+    private lateinit var torchTile: QuickTile
+    private lateinit var silentTile: QuickTile
+    private lateinit var dndTile: QuickTile
+    private var panelOpen = false
+    private var downY = 0f
+    private var swipeUsed = false
+    private val autoClose = Runnable { closePanel() }
 
     private val d = resources.displayMetrics.density
     private val h = Handler(Looper.getMainLooper())
@@ -140,6 +154,8 @@ class SleepLockView(
         ))
 
 
+        buildPanel(tf)
+
         setOnTouchListener { _, e -> handleTouch(e) }
         setOnKeyListener { _, code, _ -> code == KeyEvent.KEYCODE_BACK }
 
@@ -154,14 +170,156 @@ class SleepLockView(
 
     private fun handleTouch(e: MotionEvent): Boolean {
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> startHold()
+            MotionEvent.ACTION_DOWN -> {
+                downY = e.y
+                swipeUsed = false
+                // 面板开着时点空白不算长按（免得一边看开关一边把解锁计时跑起来）
+                if (!panelOpen) startHold()
+            }
             MotionEvent.ACTION_POINTER_DOWN -> abortHold()
             MotionEvent.ACTION_POINTER_UP -> abortHold()
-            MotionEvent.ACTION_MOVE -> if (e.pointerCount > 1) abortHold()
-            MotionEvent.ACTION_UP -> abortHold()
+            MotionEvent.ACTION_MOVE -> {
+                if (e.pointerCount > 1) { abortHold(); return true }
+                val dy = e.y - downY
+                if (!swipeUsed && dy > 64 * d) { swipeUsed = true; abortHold(); openPanel(); android.util.Log.i("SleepTime", "面板：手势触发 dy=" + dy) }
+                else if (!swipeUsed && dy < -64 * d && panelOpen) { swipeUsed = true; abortHold(); closePanel() }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!swipeUsed && panelOpen && !inPanel(e.rawX.toInt(), e.rawY.toInt())) closePanel()
+                abortHold()
+            }
             MotionEvent.ACTION_CANCEL -> abortHold()
         }
         return true
+    }
+
+    // ------------------------------------------------------------ 快捷开关面板
+
+    private fun buildPanel(tf: android.graphics.Typeface) {
+        panel = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            background = GradientDrawable().apply {
+                cornerRadius = 26f * d
+                setColor(0xE60B1016.toInt())
+                setStroke((1.2f * d).toInt().coerceAtLeast(1), 0x5526D9E8)
+            }
+            val ph = (18 * d).toInt()
+            setPadding(ph, (14 * d).toInt(), ph, (16 * d).toInt())
+        }
+        panel.addView(TextView(context).apply {
+            text = "快捷开关"
+            setTextColor(HINT_COLOR); textSize = 11.5f; letterSpacing = 0.3f; typeface = tf
+        })
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+        }
+        torchTile = makeTile(tf, R.drawable.ic_lock_flashlight, "手电筒") {
+            QuickToggles.setTorch(context, !QuickToggles.isTorch())
+            postDelayed({ refreshTiles() }, 150)
+        }
+        silentTile = makeTile(tf, R.drawable.ic_lock_silent, "静音") {
+            if (!QuickToggles.hasDndAccess(context)) {
+                android.widget.Toast.makeText(context, "静音需要「勿扰权限」：设置 → 通知与状态栏 → 勿扰权限", android.widget.Toast.LENGTH_LONG).show()
+            } else {
+                QuickToggles.setSilent(context, !QuickToggles.isSilent(context)); refreshTiles()
+            }
+        }
+        dndTile = makeTile(tf, R.drawable.ic_lock_dnd, "免打扰") {
+            if (!QuickToggles.hasDndAccess(context)) {
+                android.widget.Toast.makeText(context, "免打扰需要「勿扰权限」：设置 → 通知与状态栏 → 勿扰权限", android.widget.Toast.LENGTH_LONG).show()
+            } else {
+                QuickToggles.setDnd(context, !QuickToggles.isDnd(context)); refreshTiles()
+            }
+        }
+        for (item in listOf(torchTile, silentTile, dndTile)) {
+            row.addView(item.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        panel.addView(row, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (14 * d).toInt() })
+        panel.addView(TextView(context).apply {
+            text = "下滑展开 · 上滑 / 点空白收起"
+            setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (12 * d).toInt() })
+        addView(panel, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP
+        ).apply {
+            topMargin = (30 * d).toInt()
+            leftMargin = (22 * d).toInt()
+            rightMargin = (22 * d).toInt()
+        })
+    }
+
+    private fun makeTile(tf: android.graphics.Typeface, icon: Int, label: String, onClick: () -> Unit): QuickTile {
+        val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        val size = (54 * d).toInt()
+        val iv = ImageView(context).apply {
+            setImageResource(icon)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            val pad = (14 * d).toInt(); setPadding(pad, pad, pad, pad)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0x22FFFFFF)
+                setStroke((1.2f * d).toInt().coerceAtLeast(1), 0x55FFFFFF)
+            }
+            setColorFilter(HINT_COLOR, PorterDuff.Mode.SRC_IN)
+            alpha = 0.75f
+            isClickable = true; isFocusable = false
+            setOnClickListener { onClick() }
+        }
+        box.addView(iv, LinearLayout.LayoutParams(size, size))
+        val tv = TextView(context).apply {
+            text = label; setTextColor(HINT_COLOR); textSize = 11f; typeface = tf
+            gravity = Gravity.CENTER; includeFontPadding = false
+        }
+        box.addView(tv, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (8 * d).toInt() })
+        return QuickTile(box, iv, tv)
+    }
+
+    private fun refreshTiles() {
+        if (!::panel.isInitialized) return
+        val hasDnd = QuickToggles.hasDndAccess(context)
+        setTileState(torchTile, QuickToggles.isTorch(), "手电筒")
+        setTileState(silentTile, QuickToggles.isSilent(context), if (hasDnd) "静音" else "静音 · 需授权")
+        setTileState(dndTile, QuickToggles.isDnd(context), if (hasDnd) "免打扰" else "免打扰 · 需授权")
+    }
+
+    private fun setTileState(t: QuickTile, on: Boolean, label: String) {
+        val c = if (on) 0xFFFFD54A.toInt() else HINT_COLOR
+        t.icon.setColorFilter(c, PorterDuff.Mode.SRC_IN)
+        t.icon.alpha = if (on) 1f else 0.75f
+        t.label.text = label
+        t.label.setTextColor(c)
+    }
+
+    private fun openPanel() {
+        if (panelOpen) return
+        panelOpen = true
+        refreshTiles()
+        panel.visibility = View.VISIBLE
+        panel.alpha = 1f
+        panel.translationY = 0f
+        android.util.Log.i("SleepTime", "面板：展开")
+        h.removeCallbacks(autoClose)
+        h.postDelayed(autoClose, 15_000L)
+    }
+
+    private fun closePanel() {
+        if (!panelOpen) return
+        panelOpen = false
+        h.removeCallbacks(autoClose)
+        panel.visibility = View.GONE
+        android.util.Log.i("SleepTime", "面板：收起")
+    }
+
+    private fun inPanel(x: Int, y: Int): Boolean {
+        val r = Rect()
+        return panel.getGlobalVisibleRect(r) && r.contains(x, y)
     }
 
     private fun startHold() {
@@ -189,14 +347,21 @@ class SleepLockView(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         post { requestFocus() }
+        Torch.startWatch(context)
+        Torch.onChanged = { post { refreshTiles() } }
     }
 
     override fun onDetachedFromWindow() {
+        Torch.onChanged = null
+        Torch.stopWatch(context)
         h.removeCallbacksAndMessages(null)
         super.onDetachedFromWindow()
     }
 
 }
+
+/** 下拉面板里的一个小开关：圆图标 + 下面一行字 */
+class QuickTile(val root: LinearLayout, val icon: ImageView, val label: TextView)
 
 /** 长按计时状态。放在 SleepLockView 外面，重建 View 时不会丢。 */
 class HoldState {
