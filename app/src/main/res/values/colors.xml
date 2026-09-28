@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF04060A</color>
+    <color name="panel">#FF0B1119</color>
+    <color name="line">#FF1B2C3C</color>
+    <color name="neon_cyan">#FF00F0FF</color>
+    <color name="neon_magenta">#FFFF2BD6</color>
+    <color name="neon_violet">#FF7B2BFF</color>
+    <color name="text">#FFE8F8FF</color>
+    <color name="text_dim">#FF7C93A5</color>
+    <color name="ok">#FF24FFA0</color>
+    <color name="warn">#FFFFB020</color>
+    <color name="danger">#FFFF3B5C</color>
+    <color name="sw_off_track">#FF232C36</color>
+    <color name="sw_off_thumb">#FF5B6A77</color>
+</resources>

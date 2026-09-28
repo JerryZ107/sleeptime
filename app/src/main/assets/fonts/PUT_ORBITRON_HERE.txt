@@ -1,0 +1,12 @@
+把赛博朋克字体丢到这个目录，文件名必须是 orbitron.ttf
+Drop the cyberpunk font here, file name MUST be orbitron.ttf
+
+推荐（免费商用，OFL 授权）：
+  Orbitron      https://fonts.google.com/specimen/Orbitron
+  Audiowide     https://fonts.google.com/specimen/Audiowide
+  Share Tech Mono  https://fonts.google.com/specimen/Share+Tech+Mono
+
+下载后解压，把 .ttf 改名为 orbitron.ttf 放进本目录即可。
+不放进来的话，App 会退回到系统超粗体 + 霓虹辉光 + 扫描线，效果也能看。
+
+也可以不碰这个目录：直接在 App 里点「选择字体文件」导入任意 .ttf。

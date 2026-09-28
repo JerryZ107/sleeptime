@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 悬浮窗权限：全屏黑幕的本体，同时是「后台直接拉起 Activity」的豁免条件 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- 前台服务：保活，否则开机杀 / 锁屏后被回收 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 到点触发 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- 锁定时静音麦克风（normal 权限，装上自动授予），让小布听不见 -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- 使用情况访问（appop，需要用户去设置里点一下）：锁屏电话让路用 ——
+         能知道用户什么时候退出了拨号盘/通话界面，好立刻把锁放回来 -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <!-- 让用户把 App 排除出电池优化 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- directBootAware：开机后、第一次解锁前就能跑（配合 Prefs 存 DE 存储） -->
+    <application
+        android:allowBackup="false"
+        android:directBootAware="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SleepTime">
+
+        <!-- 控制界面 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 锁屏本体：独立 task、不进最近任务、置顶于锁屏之上 -->
+        <activity
+            android:name=".LockActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|smallestScreenSize|screenLayout"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="false"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.SleepTime.Lock"
+            android:turnScreenOn="false" />
+
+        <!-- 悬浮窗兜底 + 看门狗 -->
+        <service
+            android:name=".LockService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Self imposed bedtime screen lock overlay that the device owner explicitly enabled" />
+        </service>
+
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
+        <!-- 自愈入口：被从最近任务划掉 / 被 ROM 清理后把自己拉回来 -->
+        <receiver
+            android:name=".RestartReceiver"
+            android:exported="false" />
+
+        <!--
+            唤醒入口：被「强行停止」打成 stopped 之后，任何 App / Tasker / adb
+            用一条**显式**广播就能把它救活（显式 intent 能穿透 stopped，并顺手清掉这个状态）。
+            实测见 WakeReceiver 的注释；命令：
+              adb shell am broadcast -a com.sleeptime.lock.WAKE -n com.sleeptime.lock/.WakeReceiver
+        -->
+        <receiver
+            android:name=".WakeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.sleeptime.lock.WAKE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 第二条命：15 分钟一次的持久化任务（重启后由系统重排） -->
+        <service
+            android:name=".GuardJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
