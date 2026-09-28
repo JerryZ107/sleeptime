@@ -2,8 +2,6 @@ package com.sleeptime.lock
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.PorterDuff
-import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -12,7 +10,6 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -29,7 +26,6 @@ class SleepLockView(
     private val holdMillis: Long,
     private val keepScreenOnPref: Boolean,
     private val holdState: HoldState,
-    private val onPhone: () -> Unit,
     private val onFinished: () -> Unit
 ) : FrameLayout(context) {
 
@@ -49,8 +45,6 @@ class SleepLockView(
     private lateinit var title: TextView
     private lateinit var ghost: TextView
     private lateinit var hint: TextView
-    private lateinit var torchBtn: ImageView
-    private lateinit var phoneBtn: ImageView
 
     private val d = resources.displayMetrics.density
     private val h = Handler(Looper.getMainLooper())
@@ -145,36 +139,6 @@ class SleepLockView(
             Gravity.CENTER
         ))
 
-        // 手电筒开关：黑幕右下角一个小药丸。为什么不做「下拉通知栏」——
-        // 那等于给锁开后门（通知一点就能进设置把 App 强行停止）。
-        // 这里只放一个开关，锁的完整性不受影响。
-        val btnPx = (62 * d).toInt()
-
-        // 两个图标按钮：左下 = 打电话，右下 = 手电筒。
-        torchBtn = circleButton(R.drawable.ic_lock_flashlight, "手电筒").apply {
-            setOnClickListener {
-                android.util.Log.i("SleepTime", "点击了手电筒按钮")
-                Torch.toggle(context)
-                postDelayed({ updateTorchButton() }, 150)
-            }
-        }
-        addView(torchBtn, FrameLayout.LayoutParams(btnPx, btnPx, Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = (26 * d).toInt()
-            bottomMargin = (34 * d).toInt()
-        })
-
-        phoneBtn = circleButton(R.drawable.ic_lock_phone, "打电话").apply {
-            setOnClickListener {
-                android.util.Log.i("SleepTime", "点击了电话按钮")
-                onPhone()
-            }
-        }
-        addView(phoneBtn, FrameLayout.LayoutParams(btnPx, btnPx, Gravity.BOTTOM or Gravity.START).apply {
-            leftMargin = (26 * d).toInt()
-            bottomMargin = (34 * d).toInt()
-        })
-
-        updateTorchButton()
 
         setOnTouchListener { _, e -> handleTouch(e) }
         setOnKeyListener { _, code, _ -> code == KeyEvent.KEYCODE_BACK }
@@ -189,7 +153,6 @@ class SleepLockView(
     }
 
     private fun handleTouch(e: MotionEvent): Boolean {
-        android.util.Log.i("SleepTime", "锁屏 touch action=" + e.actionMasked + " x=" + e.x + " y=" + e.y)
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> startHold()
             MotionEvent.ACTION_POINTER_DOWN -> abortHold()
@@ -226,43 +189,13 @@ class SleepLockView(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         post { requestFocus() }
-        Torch.startWatch(context)
-        Torch.onChanged = { post { updateTorchButton() } }
-        updateTorchButton()
     }
 
     override fun onDetachedFromWindow() {
-        Torch.onChanged = null
-        Torch.stopWatch(context)
         h.removeCallbacksAndMessages(null)
         super.onDetachedFromWindow()
     }
 
-    /** 圆形图标按钮：半透明底 + 描边，图标整体可着色 */
-    private fun circleButton(icon: Int, desc: String): ImageView = ImageView(context).apply {
-        setImageResource(icon)
-        contentDescription = desc
-        scaleType = ImageView.ScaleType.CENTER_INSIDE
-        val pad = (16 * d).toInt()
-        setPadding(pad, pad, pad, pad)
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(0x22FFFFFF)
-            setStroke((1.2f * d).toInt().coerceAtLeast(1), 0x55FFFFFF)
-        }
-        isClickable = true
-        isFocusable = false
-        setColorFilter(HINT_COLOR, PorterDuff.Mode.SRC_IN)
-        alpha = 0.72f
-    }
-
-    /** 手电筒图标跟着真实状态变色（黄色 = 开着），和系统下拉面板的磁贴互通 */
-    private fun updateTorchButton() {
-        if (!::torchBtn.isInitialized) return
-        val on = Torch.isOn
-        torchBtn.setColorFilter(if (on) 0xFFFFD54A.toInt() else HINT_COLOR, PorterDuff.Mode.SRC_IN)
-        torchBtn.alpha = if (on) 1f else 0.72f
-    }
 }
 
 /** 长按计时状态。放在 SleepLockView 外面，重建 View 时不会丢。 */

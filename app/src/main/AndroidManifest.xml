@@ -19,12 +19,6 @@
     <!-- 锁定时静音麦克风（normal 权限，装上自动授予），让小布听不见 -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- 使用情况访问（appop，需要用户去设置里点一下）：锁屏电话让路用 ——
-         能知道用户什么时候退出了拨号盘/通话界面，好立刻把锁放回来 -->
-    <uses-permission
-        android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions"
-        xmlns:tools="http://schemas.android.com/tools" />
 
     <!-- 让用户把 App 排除出电池优化 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />

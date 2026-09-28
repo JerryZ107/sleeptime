@@ -248,26 +248,6 @@
                     android:text="@string/btn_pick_hold" />
             </LinearLayout>
 
-            <LinearLayout style="@style/PermissionRow">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView style="@style/Label" android:text="锁屏电话按钮（黑幕左下角）" />
-
-                    <TextView
-                        android:id="@+id/tvCallState"
-                        style="@style/Sub" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnPickCall"
-                    style="@style/Btn.Ghost"
-                    android:text="修改" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- ================= 字体 ================= -->
@@ -438,26 +418,6 @@
                     android:text="@string/btn_direct" />
             </LinearLayout>
 
-            <LinearLayout style="@style/PermissionRow">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView style="@style/Label" android:text="使用情况访问（锁屏电话让路用）" />
-
-                    <TextView
-                        android:id="@+id/tvUsageState"
-                        style="@style/Sub" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnUsage"
-                    style="@style/Btn.Ghost"
-                    android:text="@string/btn_fix" />
-            </LinearLayout>
 
             <LinearLayout style="@style/PermissionRow">
 

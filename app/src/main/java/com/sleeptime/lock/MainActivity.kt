@@ -69,7 +69,6 @@ class MainActivity : AppCompatActivity() {
 
         b.btnPickTime.setOnClickListener { pickTime() }
         b.btnPickHold.setOnClickListener { pickHold() }
-        b.btnPickCall.setOnClickListener { pickCallNumber() }
         b.btnPickUnlock.setOnClickListener { pickUnlockTime() }
         b.btnPickFont.setOnClickListener { fontPicker.launch(arrayOf("*/*")) }
         b.btnResetFont.setOnClickListener { resetFont() }
@@ -78,7 +77,6 @@ class MainActivity : AppCompatActivity() {
         b.btnAlarm.setOnClickListener { openExactAlarmSettings() }
         b.btnNoti.setOnClickListener { openNotificationSettings() }
         b.btnBattery.setOnClickListener { openBatterySettings() }
-        b.btnUsage.setOnClickListener { openUsageAccess() }
         // 自启动：自检 + 直达，两个按钮各管一件事
         b.btnBootCheck.setOnClickListener { manualSelfCheck(true) }
         b.btnBoot.setOnClickListener { toast(SystemLinks.jumpStartup(this)) }
@@ -204,9 +202,6 @@ class MainActivity : AppCompatActivity() {
 
         b.tvHold.text = holdLabel(prefs.holdSeconds)
 
-        b.tvCallState.text = prefs.callNumber?.takeIf { it.isNotBlank() }
-            ?.let { "打给 " + it + "（预填进拨号盘，仍要自己按一下拨号）" }
-            ?: "没设号码：点开只是打开拨号盘，自己拨"
 
         val on = prefs.enabled
         b.tvStatusTitle.text = if (on) "已启用" else "已停用"
@@ -272,10 +267,6 @@ class MainActivity : AppCompatActivity() {
         // 后台运行 / 允许完全后台行为：冻结记录 + 系统待机分桶，同样是实测反推
         selfCheckRow(b.tvBgState, SystemLinks.checkBackground(this, prefs))
 
-        val usageOk = Foreground.hasUsageAccess(this)
-        setPermission(b.tvUsageState, b.btnUsage, usageOk,
-            okText = "已授权",
-            badText = "未授权 · 离开拨号盘/通话后会等 90 秒才锁回来；授权后一离开就立刻锁")
 
         setPermission(b.tvBatteryState, b.btnBattery, battOk,
             okText = "已在白名单",
@@ -409,45 +400,6 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("取消", null)
             .show()
     }
-
-    /** 锁屏电话按钮：设一个预填号码（留空就是空拨号盘） */
-    private fun pickCallNumber() {
-        val input = android.widget.EditText(this).apply {
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
-            hint = "手机号 / 座机 / 110 之类"
-            setText(prefs.callNumber ?: "")
-            setSelection(text.length)
-        }
-        val pad = (14 * resources.displayMetrics.density).toInt()
-        val box = FrameLayout(this).apply {
-            setPadding(pad, pad, pad, pad)
-            addView(input, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            ))
-        }
-        AlertDialog.Builder(this)
-            .setTitle("锁屏电话按钮")
-            .setMessage(
-                "锁屏左下角的电话图标会打开系统拨号盘，这里填的号码会被预填进去。\n" +
-                    "走拨号盘有两个好处：不需要任何权限，而且不会误拨（还得自己按一下绿色拨号键）。"
-            )
-            .setView(box)
-            .setPositiveButton("保存") { _, _ ->
-                val v = input.text.toString().trim()
-                prefs.callNumber = v.ifBlank { null }
-                refresh()
-                toast(if (v.isBlank()) "已清空：锁屏电话只打开拨号盘" else "已设置：$v")
-            }
-            .setNeutralButton("清空") { _, _ ->
-                prefs.callNumber = null
-                refresh()
-                toast("已清空")
-            }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
     private fun pickHold() {
         // 3 分钟以下已全部去掉
         val labels = arrayOf("3 分钟（推荐）", "5 分钟", "10 分钟")
@@ -582,18 +534,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             toast(c.text)
         }
-    }
-
-    /** 使用情况访问：锁屏电话让路时用来判断「用户还在不在电话里」 */
-    private fun openUsageAccess() {
-        runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-            .onFailure {
-                runCatching {
-                    startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-                    )
-                }
-            }
     }
 
     private fun openBatterySettings() {

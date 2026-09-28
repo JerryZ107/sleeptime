@@ -110,10 +110,7 @@ class LockActivity : AppCompatActivity() {
         }
 
         setContentView(
-            SleepLockView(
-                this, prefs.holdSeconds * 1000L, prefs.keepScreenOn, HoldState(),
-                { LockService.requestDial() }
-            ) {
+            SleepLockView(this, prefs.holdSeconds * 1000L, prefs.keepScreenOn, HoldState()) {
                 LockService.unlock(this)
             }
         )

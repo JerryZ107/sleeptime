@@ -51,11 +51,7 @@ class LockService : Service() {
         /** 常态（没在锁）时主循环多久跑一次。1 秒纯属浪费：息屏时设备本来就在睡，亮屏时 2 秒也够用 */
         private const val IDLE_TICK_MS = 2000L
 
-        /** 点了电话按钮后，先给拨号盘多久起来（这期间不做前台判断） */
-        private const val DIALER_START_MS = 5_000L
 
-        /** 点了锁屏上的电话按钮之后，让路多久（够拨号/通话；通话中另有 CallGuard 接管） */
-        private const val DIAL_GRACE_MS = 10 * 60_000L
 
         @Volatile private var live: LockService? = null
         @Volatile private var lastHealAt = 0L
@@ -75,10 +71,6 @@ class LockService : Service() {
 
 
 
-        /** 锁屏上的电话按钮（LockActivity 里那份视图也走这个入口，保证行为一致） */
-        fun requestDial() {
-            live?.dialFromLock()
-        }
 
         fun lockNow(ctx: Context) {
             Prefs(ctx).lastUnlockAt = 0L
@@ -127,11 +119,7 @@ class LockService : Service() {
 
     private val h = Handler(Looper.getMainLooper())
 
-    /** 让路刚开始时的"起步缓冲"：拨号盘还没起来以前不做判断（仅内存，进程重启后重给 5 秒） */
-    private var dialerReadyAfter = 0L
 
-    /** 让路期间重新武装唤醒链的节流时间 */
-    private var lastDialerHealAt = 0L
 
 
     private val ticker = object : Runnable {
@@ -240,22 +228,6 @@ class LockService : Service() {
 
         val shouldLock = Scheduler.shouldLock(prefs)
 
-        // 电话让路判定必须排在最前面（除了通话本身）：这样即使进程被杀又重启，
-        // 也不会把黑幕糊到正在拨号的界面上。
-        if (prefs.dialerUntil > System.currentTimeMillis()) {
-            // 让路期间保持一条唤醒链：设备睡了我们也能在 1 分钟内醒过来看一眼，
-            // 不然拔了 USB、手机一睡，进程被冻，"离开电话就锁回来"就没人执行了。
-            if (SystemClock.elapsedRealtime() - lastDialerHealAt > 30_000L) {
-                lastDialerHealAt = SystemClock.elapsedRealtime()
-                runCatching { Scheduler.selfHeal(this, 60_000L) }
-            }
-            if (SystemClock.elapsedRealtime() < dialerReadyAfter) return   // 拨号盘起步中，先别判
-            val fg = Foreground.packageName(this)
-            if (Foreground.isPhoneApp(fg)) return                          // 还在电话里
-            if (fg == null) return                                         // 拿不到前台：保守让路到有效期结束
-            prefs.dialerUntil = 0L
-            trace("离开电话（前台=$fg），锁回来")
-        }
 
         // 到达解除时刻（或已不在时段内）-> 自动放行（手动测试锁不受此限）
         if (locked && !prefs.manualHold && !Scheduler.inLockPeriod(prefs)) {
@@ -382,30 +354,9 @@ class LockService : Service() {
         if (now - last > 15_000L) prefs.lastTickAt = now
     }
 
-    /**
-     * 锁屏上的电话按钮。走 ACTION_DIAL —— 不需要任何权限，也不会误拨：
-     * 用户还得在拨号盘里自己按一下绿色拨号键。设了号码就把它预填进去。
-     */
-    private fun dialFromLock() {
-        val num = prefs.callNumber
-        val i = if (num.isNullOrBlank()) Intent(Intent.ACTION_DIAL)
-        else Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(num)))
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        // 落盘 + 有效期 10 分钟（够拨号/通话；通话中另有 CallGuard 接管）
-        prefs.dialerUntil = System.currentTimeMillis() + DIAL_GRACE_MS
-        // 给拨号盘 5 秒把界面顶起来（不然第一次 tick 时前台还是我们自己，会误判成"离开电话"）
-        dialerReadyAfter = SystemClock.elapsedRealtime() + DIALER_START_MS
-        trace("电话按钮：打开拨号盘（" + (if (num.isNullOrBlank()) "空" else num) + "），盯着前台直到离开电话")
-        removeOverlay()
-        LockActivity.close()
-        runCatching { startActivity(i) }.onFailure { trace("打开拨号盘失败: $it") }
-    }
-
     private fun enterLock() {
         trace("enterLock: 进入锁定态")
         prefs.lockedAt = System.currentTimeMillis()
-        prefs.dialerUntil = 0L
-        dialerReadyAfter = 0L
         prefs.lastLockAt = System.currentTimeMillis()   // 自检用：到点到底锁没锁上
         holdWakeLockBriefly()
         setMicMuted(true)
@@ -428,7 +379,7 @@ class LockService : Service() {
             return
         }
 
-        val v = SleepLockView(this, prefs.holdSeconds * 1000L, prefs.keepScreenOn, holdState, { dialFromLock() }) {
+        val v = SleepLockView(this, prefs.holdSeconds * 1000L, prefs.keepScreenOn, holdState) {
             unlock(this)
         }
 

@@ -161,23 +161,12 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_MANUAL_HOLD, false)
         set(value) { sp.edit().putBoolean(K_MANUAL_HOLD, value).commit() }
 
-    /**
-     * 电话让路的有效期（**墙钟**毫秒，跨重启也不会算错）。
-     * > 0 = 正在让路：盯着前台，只要还在拨号盘/通话界面就不锁，离开就立刻锁回来。
-     */
-    var dialerUntil: Long
-        get() = sp.getLong(K_DIALER_UNTIL, 0L)
-        set(value) { sp.edit().putLong(K_DIALER_UNTIL, value).commit() }
 
     /** 进入锁定态的时刻（0 = 没锁）。落盘：进程被杀之后还要记得"我本来锁着" */
     var lockedAt: Long
         get() = sp.getLong(K_LOCKED_AT, 0L)
         set(value) { sp.edit().putLong(K_LOCKED_AT, value).commit() }
 
-    /** 锁屏电话按钮要拨的号码；空 = 只打开拨号盘，由用户自己按拨号 */
-    var callNumber: String?
-        get() = sp.getString(K_CALL_NUMBER, null)
-        set(value) = sp.edit().putString(K_CALL_NUMBER, value).apply()
 
     /** 用户导入的字体绝对路径 */
     var fontPath: String?
@@ -205,9 +194,7 @@ class Prefs(context: Context) {
         private const val K_TURN = "turn_screen_on"
         private const val K_MIC = "mic_mute"
         private const val K_FONT = "font_path"
-        private const val K_CALL_NUMBER = "call_number"
         private const val K_MANUAL_HOLD = "manual_hold"
-        private const val K_DIALER_UNTIL = "dialer_until"
         private const val K_LOCKED_AT = "locked_at"
         private const val K_TRACE = "trace_enabled"
         private const val K_FREEZE_N = "freeze_count"
