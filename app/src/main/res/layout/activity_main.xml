@@ -152,6 +152,19 @@
 
             <TextView style="@style/Sub" android:text="@string/sw_enabled_sub" />
 
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/swNotify"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="显示详细前台通知"
+                android:textColor="@color/text"
+                android:textSize="15sp"
+                app:trackTint="@color/neon_cyan"
+                app:thumbTint="@color/neon_cyan" />
+
+            <TextView style="@style/Sub" android:text="关闭后仍保留系统要求的最小前台服务通知，无法完全隐藏" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

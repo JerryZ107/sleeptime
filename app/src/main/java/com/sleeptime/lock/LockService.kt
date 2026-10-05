@@ -194,7 +194,10 @@ class LockService : Service() {
         h.postDelayed(ticker, 300L)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        updateNotification()
+        return START_STICKY
+    }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
@@ -528,6 +531,18 @@ class LockService : Service() {
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        if (!prefs.showNotificationDetail) {
+            return NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_lock)
+                .setContentTitle("SleepTime 运行中")
+                .setContentText("详细通知已关闭")
+                .setContentIntent(content)
+                .setOngoing(true)
+                .setSilent(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .build()
+        }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_lock)

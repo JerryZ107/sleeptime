@@ -148,6 +148,12 @@ class MainActivity : AppCompatActivity() {
             }
             refresh()
         }
+        b.swNotify.setOnCheckedChangeListener { _, v ->
+            if (syncing) return@setOnCheckedChangeListener
+            prefs.showNotificationDetail = v
+            LockService.start(this)
+            refresh()
+        }
         b.swPinTask.setOnCheckedChangeListener { _, v ->
             if (syncing) return@setOnCheckedChangeListener
             prefs.pinTask = v
@@ -196,6 +202,7 @@ class MainActivity : AppCompatActivity() {
         b.tvUnlockTime.text = String.format(Locale.US, "%02d:%02d", prefs.unlockHour, prefs.unlockMinute)
 
         setSw(b.swEnabled, prefs.enabled)
+        setSw(b.swNotify, prefs.showNotificationDetail)
         setSw(b.swPinTask, prefs.pinTask)
         setSw(b.swAllowCalls, prefs.allowCalls)
         setSw(b.swKeepScreen, prefs.keepScreenOn)
