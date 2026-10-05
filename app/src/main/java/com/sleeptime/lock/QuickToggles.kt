@@ -33,8 +33,9 @@ object QuickToggles {
 
     /** 开/关静音；没授「勿扰权限」会失败并返回 false */
     fun setSilent(ctx: Context, on: Boolean): Boolean = runCatching {
-        ctx.getSystemService(AudioManager::class.java)
-            .ringerMode = if (on) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
+        val am = ctx.getSystemService(AudioManager::class.java)
+        am.ringerMode = if (on) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
+        Log.i(TAG, "setSilent($on) -> ringerMode=${am.ringerMode}")
         true
     }.onFailure { Log.w(TAG, "setSilent($on) 失败", it) }.getOrDefault(false)
 
@@ -61,10 +62,12 @@ object QuickToggles {
     }.getOrDefault(false)
 
     fun setDnd(ctx: Context, on: Boolean): Boolean = runCatching {
-        ctx.getSystemService(NotificationManager::class.java).setInterruptionFilter(
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.setInterruptionFilter(
             if (on) NotificationManager.INTERRUPTION_FILTER_NONE
             else NotificationManager.INTERRUPTION_FILTER_ALL
         )
+        Log.i(TAG, "setDnd($on) -> filter=${nm.currentInterruptionFilter}")
         true
     }.onFailure { Log.w(TAG, "setDnd($on) 失败", it) }.getOrDefault(false)
 

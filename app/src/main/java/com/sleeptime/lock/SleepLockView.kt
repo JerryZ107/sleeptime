@@ -219,18 +219,30 @@ class SleepLockView(
             QuickToggles.setTorch(context, !QuickToggles.isTorch())
             postDelayed({ refreshTiles() }, 150)
         }
-        silentTile = makeTile(tf, R.drawable.ic_lock_silent, "静音") {
-            val ok = QuickToggles.setSilent(context, !QuickToggles.isSilent(context))
-            if (!ok) {
-                android.widget.Toast.makeText(context, "静音切换失败，系统限制了铃声模式", android.widget.Toast.LENGTH_SHORT).show()
-            }
+        silentTile = makeTile(tf, R.drawable.ic_lock_silent, "铃声静音") {
+            val on = !QuickToggles.isSilent(context)
+            val ok = QuickToggles.setSilent(context, on)
+            android.widget.Toast.makeText(
+                context,
+                if (!ok) "铃声静音切换失败，系统限制了铃声模式"
+                else if (on) "已切换为铃声静音（不会开启勿扰）"
+                else "已恢复铃声",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
             refreshTiles()
         }
-        dndTile = makeTile(tf, R.drawable.ic_lock_dnd, "免打扰") {
+        dndTile = makeTile(tf, R.drawable.ic_lock_dnd, "勿扰模式") {
             if (!QuickToggles.hasDndAccess(context)) {
                 showDndGrantHint()
             } else {
-                QuickToggles.setDnd(context, !QuickToggles.isDnd(context)); refreshTiles()
+                val on = !QuickToggles.isDnd(context)
+                QuickToggles.setDnd(context, on)
+                android.widget.Toast.makeText(
+                    context,
+                    if (on) "已开启勿扰模式" else "已关闭勿扰模式",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                refreshTiles()
             }
         }
         for (item in listOf(torchTile, silentTile, dndTile)) {
@@ -246,7 +258,7 @@ class SleepLockView(
             visibility = View.GONE
         }
         dndHintRow.addView(TextView(context).apply {
-            text = "免打扰未授权 · 请先解锁，回控制面板授权勿扰权限"
+            text = "勿扰模式未授权 · 请先解锁，回控制面板授权勿扰权限"
             setTextColor(0x99FFD54A.toInt())
             textSize = 10.5f
             typeface = tf
@@ -308,14 +320,14 @@ class SleepLockView(
             dndHintRow.visibility = if (hasDnd) View.GONE else View.VISIBLE
         }
         setTileState(torchTile, QuickToggles.isTorch(), "手电筒")
-        setTileState(silentTile, QuickToggles.isSilent(context), "静音")
-        setTileState(dndTile, QuickToggles.isDnd(context), if (hasDnd) "免打扰" else "免打扰 · 需授权")
+        setTileState(silentTile, QuickToggles.isSilent(context), "铃声静音")
+        setTileState(dndTile, QuickToggles.isDnd(context), if (hasDnd) "勿扰模式" else "勿扰模式 · 需授权")
     }
 
     private fun showDndGrantHint() {
         android.widget.Toast.makeText(
             context,
-            "静音 / 免打扰未授权。请先解锁，回 SleepTime 控制面板授权勿扰权限",
+            "勿扰模式未授权。请先解锁，回 SleepTime 控制面板授权勿扰权限",
             android.widget.Toast.LENGTH_LONG
         ).show()
     }
