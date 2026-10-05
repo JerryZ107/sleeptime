@@ -3,6 +3,7 @@ package com.sleeptime.lock
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.provider.Settings
 import android.util.Log
 
@@ -11,7 +12,7 @@ import android.util.Log
  *
  * 能做：
  *   手电筒    CameraManager.setTorchMode                不需要任何权限（本机实测）
- *   声音与振动 跳系统设置页（ColorOS 会联动勿扰，App 不直接切 ringer）
+ *   静音      AudioManager.adjustStreamVolume(MUTE)    只静音铃声/通知/系统音，不碰勿扰
  *   免打扰    NotificationManager.setInterruptionFilter  需要系统勿扰权限
  *
  * 做不了（照着手机下拉面板列过一遍，都是系统/签名级权限，普通 App 一律没戏，所以面板里不放）：
@@ -25,6 +26,35 @@ import android.util.Log
 object QuickToggles {
 
     private const val TAG = "SleepTime"
+
+    private val SILENT_STREAMS = intArrayOf(
+        AudioManager.STREAM_RING,
+        AudioManager.STREAM_NOTIFICATION,
+        AudioManager.STREAM_SYSTEM,
+        AudioManager.STREAM_DTMF
+    )
+
+    fun isSilent(ctx: Context): Boolean = runCatching {
+        ctx.getSystemService(AudioManager::class.java).isStreamMute(AudioManager.STREAM_RING)
+    }.getOrDefault(false)
+
+    /**
+     * Mute/unmute only the notification/ring/system streams.
+     * This deliberately does NOT call setRingerMode: ColorOS couples ringer mode
+     * with ZenModeHelper/DND, which made the old silent button toggle DND.
+     */
+    fun setSilent(ctx: Context, on: Boolean): Boolean = runCatching {
+        val am = ctx.getSystemService(AudioManager::class.java)
+        val direction = if (on) AudioManager.ADJUST_MUTE else AudioManager.ADJUST_UNMUTE
+        val ringOk = runCatching {
+            am.adjustStreamVolume(AudioManager.STREAM_RING, direction, 0)
+        }.isSuccess
+        SILENT_STREAMS.filter { it != AudioManager.STREAM_RING }.forEach { stream ->
+            runCatching { am.adjustStreamVolume(stream, direction, 0) }
+        }
+        Log.i(TAG, "setSilent($on) ringOk=$ringOk streams=${SILENT_STREAMS.joinToString()}")
+        ringOk
+    }.onFailure { Log.w(TAG, "setSilent($on) failed", it) }.getOrDefault(false)
 
     fun hasDndAccess(ctx: Context): Boolean = runCatching {
         ctx.getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
