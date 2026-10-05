@@ -45,6 +45,12 @@ class MainActivity : AppCompatActivity() {
     private val notiPerm =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
 
+    private val phonePerm =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) toast("没有电话权限，来电时可能无法自动放开麦克风")
+            refresh()
+        }
+
     private val fontPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) importFont(uri) else refresh()
@@ -76,6 +82,8 @@ class MainActivity : AppCompatActivity() {
         b.btnOverlay.setOnClickListener { openOverlaySettings() }
         b.btnAlarm.setOnClickListener { openExactAlarmSettings() }
         b.btnNoti.setOnClickListener { openNotificationSettings() }
+        b.btnPhone.setOnClickListener { requestPhonePermission() }
+        b.btnDnd.setOnClickListener { openDndSettings() }
         b.btnBattery.setOnClickListener { openBatterySettings() }
         // 自启动：自检 + 直达，两个按钮各管一件事
         b.btnBootCheck.setOnClickListener { manualSelfCheck(true) }
@@ -207,14 +215,12 @@ class MainActivity : AppCompatActivity() {
         b.tvStatusTitle.text = if (on) "已启用" else "已停用"
         b.tvStatusTitle.setTextColor(color(if (on) R.color.ok else R.color.warn))
 
-        val next = Scheduler.nextTriggerMillis(prefs.hour, prefs.minute)
-        val fmt = SimpleDateFormat("M 月 d 日 HH:mm", Locale.CHINA)
         b.tvStatusNext.text = if (on) {
             "每天 " + String.format(Locale.US, "%02d:%02d", prefs.hour, prefs.minute) +
                 " 锁定 · " + String.format(Locale.US, "%02d:%02d", prefs.unlockHour, prefs.unlockMinute) +
                 " 自动解除 · 长按 " + holdLabel(prefs.holdSeconds) + " 解锁"
         } else {
-            "自动锁定已关闭。打开上面的开关才会定时生效。"
+            "自动锁定已关闭，打开“锁定行为”中的“启用每日自动锁定”才会生效"
         }
         b.tvLockState.text = lockStateText()
         b.tvLockState.setTextColor(color(if (Scheduler.shouldLock(prefs)) R.color.ok else R.color.text_dim))
@@ -258,7 +264,19 @@ class MainActivity : AppCompatActivity() {
             okText = "已允许",
             badText = "未允许 · 前台服务通知会被隐藏，保活变差")
 
-        val battOk = getSystemService(PowerManager::class.java)
+        val phoneOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        } else true
+        setPermission(b.tvPhoneState, b.btnPhone, phoneOk,
+            okText = "已授权",
+            badText = "未授权 · 来电时无法自动放开麦克风")
+
+        val dndOk = QuickToggles.hasDndAccess(this)
+        setPermission(b.tvDndState, b.btnDnd, dndOk,
+            okText = "已授权",
+            badText = "未授权 · 免打扰不可用；点右侧去系统设置允许")
+
+        val battWhitelisted = getSystemService(PowerManager::class.java)
             .isIgnoringBatteryOptimizations(packageName)
 
         // 自启动：只能实测反推 —— BootReceiver 有没有在这次开机收到开机广播
@@ -268,9 +286,14 @@ class MainActivity : AppCompatActivity() {
         selfCheckRow(b.tvBgState, SystemLinks.checkBackground(this, prefs))
 
 
-        setPermission(b.tvBatteryState, b.btnBattery, battOk,
-            okText = "已在白名单",
-            badText = "未加入白名单 · 半夜可能被系统清理掉")
+        // System battery whitelist can be queried; ColorOS full background behavior cannot.
+        b.tvBatteryState.text = if (battWhitelisted) {
+            "已加入系统电池优化白名单；无法检测 ColorOS 的“允许完全后台行为”，请点右侧去系统页确认"
+        } else {
+            "未加入系统电池优化白名单；无法检测 ColorOS 的“允许完全后台行为”，请点右侧去系统页确认"
+        }
+        b.tvBatteryState.setTextColor(color(if (battWhitelisted) R.color.ok else R.color.warn))
+        b.btnBattery.visibility = View.VISIBLE
 
         updateCountdown()
     }
@@ -285,6 +308,24 @@ class MainActivity : AppCompatActivity() {
         state.text = if (granted) okText else badText
         state.setTextColor(color(if (granted) R.color.ok else R.color.warn))
         button.visibility = if (granted) View.INVISIBLE else View.VISIBLE
+    }
+
+    private fun requestPhonePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED
+        ) {
+            phonePerm.launch(Manifest.permission.READ_PHONE_STATE)
+        } else {
+            toast("电话权限已授予")
+        }
+    }
+
+    private fun openDndSettings() {
+        val ok = QuickToggles.openDndAccessSettings(this)
+        toast(
+            if (ok) "已打开勿扰权限页，请允许 SleepTime"
+            else "打不开系统页，请手动去 设置 -> 通知与状态栏 -> 勿扰权限"
+        )
     }
 
     /** 检测诊断日志：有才显示「清空」按钮 */

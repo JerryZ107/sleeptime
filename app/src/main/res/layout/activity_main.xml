@@ -362,6 +362,48 @@
                     android:text="@string/btn_fix" />
             </LinearLayout>
 
+            <LinearLayout style="@style/PermissionRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:text="电话权限（来电解麦用）" />
+
+                    <TextView
+                        android:id="@+id/tvPhoneState"
+                        style="@style/Sub" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnPhone"
+                    style="@style/Btn.Ghost"
+                    android:text="@string/btn_fix" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/PermissionRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:text="勿扰权限（免打扰用）" />
+
+                    <TextView
+                        android:id="@+id/tvDndState"
+                        style="@style/Sub" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnDnd"
+                    style="@style/Btn.Ghost"
+                    android:text="@string/btn_fix" />
+            </LinearLayout>
+
             <!-- 1. 自启动 -->
             <LinearLayout style="@style/PermissionRow">
 

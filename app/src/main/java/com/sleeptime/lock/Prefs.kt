@@ -100,6 +100,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_MIC, true)
         set(value) = sp.edit().putBoolean(K_MIC, value).apply()
 
+    /**
+     * 通话保持到什么时候（wall clock，毫秒）。
+     * 进程重启后也能知道刚才在通话中，避免服务重启的一瞬间把麦克风重新静音。
+     */
+    var callHoldUntil: Long
+        get() = sp.getLong(K_CALL_HOLD, 0L)
+        set(value) {
+            sp.edit().putLong(K_CALL_HOLD, value).commit()
+        }
+
     /** 后台被系统冻结的次数 / 最长一次冻结多久 / 上次心跳时间（用于自检） */
     var freezeCount: Int
         get() = sp.getInt(K_FREEZE_N, 0)
@@ -193,6 +203,7 @@ class Prefs(context: Context) {
         private const val K_KEEP = "keep_screen_on"
         private const val K_TURN = "turn_screen_on"
         private const val K_MIC = "mic_mute"
+        private const val K_CALL_HOLD = "call_hold_until"
         private const val K_FONT = "font_path"
         private const val K_MANUAL_HOLD = "manual_hold"
         private const val K_LOCKED_AT = "locked_at"

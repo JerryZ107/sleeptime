@@ -58,6 +58,7 @@ class SleepLockView(
     private var panelOpen = false
     private var downY = 0f
     private var swipeUsed = false
+    private lateinit var dndHintRow: LinearLayout
     private val autoClose = Runnable { closePanel() }
 
     private val d = resources.displayMetrics.density
@@ -219,15 +220,15 @@ class SleepLockView(
             postDelayed({ refreshTiles() }, 150)
         }
         silentTile = makeTile(tf, R.drawable.ic_lock_silent, "静音") {
-            if (!QuickToggles.hasDndAccess(context)) {
-                android.widget.Toast.makeText(context, "静音需要「勿扰权限」：设置 → 通知与状态栏 → 勿扰权限", android.widget.Toast.LENGTH_LONG).show()
-            } else {
-                QuickToggles.setSilent(context, !QuickToggles.isSilent(context)); refreshTiles()
+            val ok = QuickToggles.setSilent(context, !QuickToggles.isSilent(context))
+            if (!ok) {
+                android.widget.Toast.makeText(context, "静音切换失败，系统限制了铃声模式", android.widget.Toast.LENGTH_SHORT).show()
             }
+            refreshTiles()
         }
         dndTile = makeTile(tf, R.drawable.ic_lock_dnd, "免打扰") {
             if (!QuickToggles.hasDndAccess(context)) {
-                android.widget.Toast.makeText(context, "免打扰需要「勿扰权限」：设置 → 通知与状态栏 → 勿扰权限", android.widget.Toast.LENGTH_LONG).show()
+                showDndGrantHint()
             } else {
                 QuickToggles.setDnd(context, !QuickToggles.isDnd(context)); refreshTiles()
             }
@@ -238,6 +239,21 @@ class SleepLockView(
         panel.addView(row, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = (14 * d).toInt() })
+
+        dndHintRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+        }
+        dndHintRow.addView(TextView(context).apply {
+            text = "免打扰未授权 · 请先解锁，回控制面板授权勿扰权限"
+            setTextColor(0x99FFD54A.toInt())
+            textSize = 10.5f
+            typeface = tf
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ))
         panel.addView(TextView(context).apply {
             text = "下滑展开 · 上滑 / 点空白收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
@@ -284,9 +300,20 @@ class SleepLockView(
     private fun refreshTiles() {
         if (!::panel.isInitialized) return
         val hasDnd = QuickToggles.hasDndAccess(context)
+        if (::dndHintRow.isInitialized) {
+            dndHintRow.visibility = if (hasDnd) View.GONE else View.VISIBLE
+        }
         setTileState(torchTile, QuickToggles.isTorch(), "手电筒")
-        setTileState(silentTile, QuickToggles.isSilent(context), if (hasDnd) "静音" else "静音 · 需授权")
+        setTileState(silentTile, QuickToggles.isSilent(context), "静音")
         setTileState(dndTile, QuickToggles.isDnd(context), if (hasDnd) "免打扰" else "免打扰 · 需授权")
+    }
+
+    private fun showDndGrantHint() {
+        android.widget.Toast.makeText(
+            context,
+            "静音 / 免打扰未授权。请先解锁，回 SleepTime 控制面板授权勿扰权限",
+            android.widget.Toast.LENGTH_LONG
+        ).show()
     }
 
     private fun setTileState(t: QuickTile, on: Boolean, label: String) {

@@ -56,6 +56,35 @@ class LockService : Service() {
         @Volatile private var live: LockService? = null
         @Volatile private var lastHealAt = 0L
 
+        /**
+         * Safety hold. A normal call is shorter than this; if the IDLE broadcast
+         * is lost, it is safer to leave the mic open than to re-mute during a call.
+         */
+        private const val CALL_HOLD_MS = 6 * 60 * 60_000L
+
+        @Volatile private var externalCallHoldUntil = 0L
+
+        private fun unmuteMic(ctx: Context) {
+            runCatching { ctx.getSystemService(AudioManager::class.java).isMicrophoneMute = false }
+        }
+
+        fun unmuteNow(ctx: Context) {
+            unmuteMic(ctx)
+            live?.forceUnmuteMic()
+        }
+
+        fun onExternalCallStart(ctx: Context) {
+            val until = System.currentTimeMillis() + CALL_HOLD_MS
+            externalCallHoldUntil = SystemClock.elapsedRealtime() + CALL_HOLD_MS
+            Prefs(ctx).callHoldUntil = until
+            unmuteNow(ctx)
+        }
+
+        fun onExternalCallEnd(ctx: Context) {
+            externalCallHoldUntil = 0L
+            Prefs(ctx).callHoldUntil = 0L
+        }
+
         @Volatile
         var running: Boolean = false
             private set
@@ -83,6 +112,8 @@ class LockService : Service() {
         }
 
         fun stop(ctx: Context) {
+            unmuteNow(ctx)
+            Scheduler.cancelLiveness(ctx)
             runCatching { ctx.stopService(Intent(ctx, LockService::class.java)) }
         }
 
@@ -131,6 +162,19 @@ class LockService : Service() {
         }
     }
 
+    /**
+     * Re-arms a 20s liveness alarm every 10s. If the process is killed without
+     * onDestroy (ColorOS recent-task kill), the last alarm fires and restores us.
+     */
+    private val liveness = object : Runnable {
+        override fun run() {
+            if (stopped) return
+            runCatching { Scheduler.armLiveness(this@LockService) }
+                .onFailure { trace("armLiveness failed: $it") }
+            h.postDelayed(this, 10_000L)
+        }
+    }
+
     /** 状态写文件 —— 绕过 ColorOS 对后台应用日志的屏蔽 */
     private fun trace(msg: String) {
         if (!TRACE_ENABLED) return
@@ -163,9 +207,11 @@ class LockService : Service() {
         //   · 现在改成「上锁时短暂持有几分钟」，靠 acquire(超时) 自动释放，见 holdWakeLockBriefly()。
         createChannel()
         goForeground()
+        runCatching { CallStateMonitor.start(this) }.onFailure { trace("CallStateMonitor.start failed: $it") }
         runCatching { Scheduler.arm(this) }
         runCatching { Scheduler.armWatchdog(this) }   // 看门狗第一环
         h.postDelayed(ticker, 300L)
+        h.postDelayed(liveness, 1000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -183,6 +229,7 @@ class LockService : Service() {
         running = false
         live = null
         h.removeCallbacksAndMessages(null)
+        runCatching { CallStateMonitor.stop(this) }.onFailure { trace("CallStateMonitor.stop failed: $it") }
         removeOverlay()
         runCatching { wakeLock?.release() }
         // 兜底：绝不能把麦克风留在静音态
@@ -203,7 +250,7 @@ class LockService : Service() {
     private fun exitLock() {
         trace("exitLock (was locked=$locked)")
         prefs.lockedAt = 0L
-        setMicMuted(false)
+        forceUnmuteMic()
         locked = false
         unfocusedTicks = 0
         removeOverlay()
@@ -214,15 +261,21 @@ class LockService : Service() {
 
     private fun tick() {
         detectFreeze()
-        if (!prefs.enabled) return
 
-        val inCall = CallGuard.detect(this)
+        val inCall = CallGuard.detect(this) || isCallHoldActive()
         CallGuard.update(inCall)
-        if (prefs.allowCalls && inCall) {
-            if (overlay != null) removeOverlay()
-            if (LockActivity.visible) LockActivity.instance?.stepAsideForCall()
-            // 通话优先：先把麦克风放开，别让人家听不见你说话
-            setMicMuted(false)
+        if (inCall) {
+            // Release the global microphone mute during any call, regardless of allowCalls.
+            forceUnmuteMic()
+            if (prefs.enabled && prefs.allowCalls) {
+                if (overlay != null) removeOverlay()
+                if (LockActivity.visible) LockActivity.instance?.stepAsideForCall()
+            }
+            return
+        }
+
+        if (!prefs.enabled) {
+            forceUnmuteMic()
             return
         }
 
@@ -237,7 +290,7 @@ class LockService : Service() {
             unfocusedTicks = 0
             removeOverlay()
             LockActivity.close()
-            setMicMuted(false)
+            forceUnmuteMic()
             updateNotification()
             return
         }
@@ -300,20 +353,28 @@ class LockService : Service() {
         }.onFailure { trace("wakeLock 获取失败: $it") }
     }
 
-    /**
-     * 静音 / 放开麦克风。
-     * 只需要 MODIFY_AUDIO_SETTINGS（normal 权限），是纯 App 侧能做的最强手段：
-     * 麦克风一静音，小布的唤醒词识别和语音指令就都废了，不用碰它任何包。
-     * 幂等，重复调用没开销。
-     */
     private fun setMicMuted(mute: Boolean) {
         val target = mute && prefs.micMute
         if (micMuted == target) return
+        applyMicMuted(target)
+    }
+
+    /** Force the global microphone to unmuted and sync the local flag. */
+    private fun forceUnmuteMic() {
+        applyMicMuted(false)
+    }
+
+    /** Uses the existing Prefs instance; no SharedPreferences churn on every tick. */
+    private fun isCallHoldActive(): Boolean =
+        SystemClock.elapsedRealtime() < externalCallHoldUntil ||
+            prefs.callHoldUntil > System.currentTimeMillis()
+
+    private fun applyMicMuted(target: Boolean) {
         runCatching {
             getSystemService(AudioManager::class.java).isMicrophoneMute = target
             micMuted = target
-            trace("麦克风静音 = $target")
-        }.onFailure { trace("setMicrophoneMute 失败: $it") }
+            trace("mic mute = $target")
+        }.onFailure { trace("setMicrophoneMute failed: $it") }
     }
 
     private fun consumeForceLock() {
@@ -359,7 +420,11 @@ class LockService : Service() {
         prefs.lockedAt = System.currentTimeMillis()
         prefs.lastLockAt = System.currentTimeMillis()   // 自检用：到点到底锁没锁上
         holdWakeLockBriefly()
-        setMicMuted(true)
+        if (CallGuard.detect(this) || isCallHoldActive()) {
+            forceUnmuteMic()
+        } else {
+            setMicMuted(true)
+        }
         locked = true
         reassertTries = 0
         addOverlay()

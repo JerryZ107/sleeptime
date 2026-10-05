@@ -17,7 +17,10 @@ class RestartReceiver : BroadcastReceiver() {
 
     override fun onReceive(ctx: Context, intent: Intent?) {
         val p = Prefs(ctx)
-        if (!p.enabled) return
+        if (!p.enabled) {
+            LockService.unmuteNow(ctx)
+            return
+        }
 
         val shouldLock = Scheduler.shouldLock(p)
         Log.i("SleepTime", "RestartReceiver: 自愈触发 该锁=$shouldLock")

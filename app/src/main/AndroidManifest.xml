@@ -19,6 +19,12 @@
     <!-- 锁定时静音麦克风（normal 权限，装上自动授予），让小布听不见 -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <!-- 来电监听：接电话 / 微信语音时立刻放开麦克风 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- 勿扰权限：锁屏下拉面板的静音 / 免打扰需要它；没有它就不会出现在系统勿扰权限列表里 -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
 
     <!-- 让用户把 App 排除出电池优化 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -88,6 +94,15 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.sleeptime.lock.WAKE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 系统来电广播：只要收到 PHONE_STATE 就解麦，不依赖服务活着 -->
+        <receiver
+            android:name=".PhoneStateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
 

@@ -22,6 +22,8 @@ class GuardJobService : JobService() {
             runCatching { Scheduler.arm(this) }
             runCatching { Scheduler.armWatchdog(this) }
             LockService.start(this)
+        } else {
+            LockService.unmuteNow(this)
         }
         return false   // 同步做完，不用再回调
     }

@@ -14,7 +14,10 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(ctx: Context, intent: Intent?) {
         val p = Prefs(ctx)
-        if (!p.enabled) return
+        if (!p.enabled) {
+            LockService.unmuteNow(ctx)
+            return
+        }
 
         val isBackup = intent?.getBooleanExtra(Scheduler.EXTRA_BACKUP, false) == true
         Log.i("SleepTime", "AlarmReceiver 触发 isBackup=$isBackup 该锁=${Scheduler.shouldLock(p)}")

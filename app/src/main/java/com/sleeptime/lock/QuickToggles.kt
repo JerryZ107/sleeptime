@@ -2,7 +2,9 @@ package com.sleeptime.lock
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.media.AudioManager
+import android.provider.Settings
 import android.util.Log
 
 /**
@@ -39,6 +41,18 @@ object QuickToggles {
     fun hasDndAccess(ctx: Context): Boolean = runCatching {
         ctx.getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
     }.getOrDefault(false)
+
+    /** Open the system notification-policy (DND) access page; fall back to the global list. */
+    fun openDndAccessSettings(ctx: Context): Boolean {
+        val detail = Intent("android.settings.NOTIFICATION_POLICY_ACCESS_DETAIL_SETTINGS")
+            .putExtra("android.provider.extra.APP_PACKAGE", ctx.packageName)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { ctx.startActivity(detail) }.isSuccess) return true
+
+        val global = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return runCatching { ctx.startActivity(global) }.isSuccess
+    }
 
     fun isDnd(ctx: Context): Boolean = runCatching {
         val nm = ctx.getSystemService(NotificationManager::class.java)

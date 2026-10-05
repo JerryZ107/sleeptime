@@ -118,27 +118,20 @@ object SystemLinks {
                 Check(OK, "实测通过：这次开机（" + stamp(seen) + "）系统把开机广播送到了本 App，自启动是开着的")
 
             installedAt > thisBoot ->
-                Check(UNKNOWN, "本次开机之后才装/更新过，还测不出来 —— 重启一次手机，再回来看这行")
+                Check(UNKNOWN, "无法检测：本次开机之后才安装/更新过，需要重启一次手机再回来看这行")
 
             marked == 0L ->
-                Check(UNKNOWN, "还没重启过手机，测不出来 —— 重启后回来看这行（没开的话开机广播会被系统吞掉）")
+                Check(UNKNOWN, "无法检测：还没有重启过手机，测不出自启动是否生效")
 
             else ->
                 Check(BAD, "这次开机没收到开机广播（上一次收到是 " + stamp(seen) +
-                    "）—— 要么自启动被拦，要么 App 被「强行停止」/闲置休眠过。" +
+                    "）—— 要么自启动被拦，要么 App 被强行停止/闲置休眠过。" +
                     "去应用详情把「管理闲置应用」的休眠关掉，再打开一次本 App")
         }
     }
 
-    /**
-     * 后台运行（「允许完全后台行为」）自检：系统同样没有查询接口，只能拿两条
-     * 观测到的证据反推，两条都是硬的：
-     *   1) 守护服务心跳断档 —— 真被冻过就一定会记下来（最直接）
-     *   2) 系统待机分桶 —— EXEMPTED/ACTIVE 说明没被压制，RARE 及以下就要当心
-     */
     fun checkBackground(ctx: Context, p: Prefs): Check {
         val bucket = standbyBucket(ctx)
-        // 最直接的证据：闹钟排好了、到点了，却没锁上 —— 那就是系统把 App 按住了
         val missed = p.enabled && p.pendingTrigger > 0L &&
             p.pendingTrigger < System.currentTimeMillis() - 90_000L &&
             p.lastLockAt < p.pendingTrigger
@@ -147,7 +140,7 @@ object SystemLinks {
             System.currentTimeMillis() - p.lastFreezeAt < FREEZE_FRESH_MS
         return when {
             missed ->
-                Check(BAD, "预定 " + stamp(p.pendingTrigger) + " 那次锁定没锁上（App 被系统按住/冻住了）——" +
+                Check(BAD, "预定 " + stamp(p.pendingTrigger) + " 那次锁定没锁上（App 被系统按住/冻结了）——" +
                     " 这是「到点不锁」最硬的证据。去「耗电管理」把「允许完全后台行为」打开，再点「直达」确认一遍")
 
             frozenFresh ->
@@ -155,28 +148,28 @@ object SystemLinks {
                     (p.maxFreezeMs / 1000) + " 秒，最近 " + stamp(p.lastFreezeAt) +
                     "）—— 这条是守护服务心跳记下的，说明「允许完全后台行为」没生效")
 
-            // 老版本记下的冻结（没有时间戳）分不清是开之前还是开之后 —— 不冤判，也不放过
             p.freezeCount > 0 && p.lastFreezeAt <= 0L ->
-                Check(UNKNOWN, "待机分桶 = " + bucketName(bucket) + "（没被压制）；但还留着 " +
-                    p.freezeCount + " 次升级前记的旧冻结（最长 " + (p.maxFreezeMs / 1000) +
-                    " 秒），分不清是开之前还是开之后 —— 点「自检」可以清掉旧记录重新实测")
+                Check(UNKNOWN, "无法检测：待机分桶 = " + bucketName(bucket) + "（没被压制）；" +
+                    "但还留着 " + p.freezeCount + " 次升级前记的旧冻结（最长 " +
+                    (p.maxFreezeMs / 1000) + " 秒），分不清是开之前还是开之后 —— " +
+                    "点「自检」可以清掉旧记录重新实测")
 
             bucket >= 40 ->
                 Check(BAD, "系统待机分桶 = " + bucketName(bucket) +
                     "，后台会被压制 —— 去「耗电管理」里选「允许完全后台行为」")
 
-            bucket in 1..10 -> {
-                val last = if (p.lastLockAt > 0L)
-                    "最近一次到点锁定（" + stamp(p.lastLockAt) + "）是准的"
-                else
-                    "还没攒出「到点锁定」的记录"
-                Check(OK, "待机分桶 = " + bucketName(bucket) + "（没被压制），" + last +
-                    " —— 合起来看是允许的")
-            }
+            bucket in 1..10 && p.lastLockAt > 0L ->
+                Check(UNKNOWN, "无法检测：待机分桶 = " + bucketName(bucket) + "（当前没被压制），" +
+                    "也有过锁定记录，但系统没有公开查询「是否允许完全后台行为」的接口 —— " +
+                    "至少实际过一晚，确认到点自动锁上，才能算有硬证据")
+
+            bucket in 1..10 ->
+                Check(UNKNOWN, "无法检测：待机分桶 = " + bucketName(bucket) +
+                    "（当前没被压制），但还没有任何锁定记录 —— 至少实际锁一晚再回来看这行")
 
             else ->
-                Check(UNKNOWN, "暂时没抓到被冻结的证据，待机分桶 = " + bucketName(bucket) +
-                    " —— 这一项只能靠实测：睡一晚、明早回来看这行有没有变红")
+                Check(UNKNOWN, "无法检测：暂时没抓到被冻结的证据，待机分桶 = " + bucketName(bucket) +
+                    " —— 需要实际锁一晚，明早回来看这行有没有变红")
         }
     }
 

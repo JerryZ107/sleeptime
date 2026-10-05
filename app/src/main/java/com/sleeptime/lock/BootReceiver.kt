@@ -33,7 +33,10 @@ class BootReceiver : BroadcastReceiver() {
         val shouldLock = Scheduler.shouldLock(p)
         Log.i("SleepTime", "BootReceiver: $action enabled=${p.enabled} 时段内=$inPeriod 该锁=$shouldLock")
 
-        if (!p.enabled) return
+        if (!p.enabled) {
+            LockService.unmuteNow(ctx)
+            return
+        }
 
         // 1) 闹钟一定得重排 —— 重启后系统把它们全清了
         runCatching { Scheduler.arm(ctx) }
