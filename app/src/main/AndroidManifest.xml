@@ -27,7 +27,6 @@
 
 
     <!-- 让用户把 App 排除出电池优化 -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- directBootAware：开机后、第一次解锁前就能跑（配合 Prefs 存 DE 存储） -->
     <application

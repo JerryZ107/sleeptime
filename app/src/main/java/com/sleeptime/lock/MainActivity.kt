@@ -529,17 +529,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * 自检结论落到一行字上：绿 = 实测通过，红 = 实测没过，灰 = 还测不出来。
-     */
+    /** 电池优化/耗电管理没有公开直达页，统一去应用详情。 */
     private fun openBatterySettings() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-        val direct = Intent(
-            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-            Uri.parse("package:$packageName")
-        )
-        if (runCatching { startActivity(direct) }.isSuccess) return
-        runCatching { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            )
+        }
+        toast("已打开应用详情，请在「耗电管理」里设置")
     }
 
     // --------------------------------------------------------------- 操作

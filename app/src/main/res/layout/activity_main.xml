@@ -467,7 +467,7 @@
                 <TextView
                     android:id="@+id/btnBattery"
                     style="@style/Btn.Ghost"
-                    android:text="@string/btn_fix" />
+                    android:text="@string/btn_goto_app_detail" />
             </LinearLayout>
         </LinearLayout>
 

@@ -219,39 +219,9 @@ class SleepLockView(
             QuickToggles.setTorch(context, !QuickToggles.isTorch())
             postDelayed({ refreshTiles() }, 150)
         }
-        silentTile = makeTile(tf, R.drawable.ic_lock_silent, "系统静音") {
-            val on = !QuickToggles.isSilent(context)
-            val ok = QuickToggles.setSilent(context, on)
-            android.widget.Toast.makeText(
-                context,
-                if (!ok) "系统静音切换失败，系统限制了铃声模式"
-                else if (on) "已切换为系统静音（不影响媒体和闹钟）"
-                else "已恢复声音",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-            refreshTiles()
+        silentTile = makeTile(tf, R.drawable.ic_lock_silent, "声音与振动") {
+            openSoundSettings()
         }
-        val openSoundSettings = {
-            val intent = android.content.Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
-                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            val ok = runCatching { context.startActivity(intent) }.isSuccess
-            if (!ok) {
-                runCatching {
-                    context.startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
-                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                }
-            }
-            android.widget.Toast.makeText(
-                context,
-                if (ok) "已打开系统「声音与振动」设置" else "打不开系统设置页",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-        }
-        silentTile.root.setOnLongClickListener { openSoundSettings(); true }
-        silentTile.icon.setOnLongClickListener { openSoundSettings(); true }
-        silentTile.label.setOnLongClickListener { openSoundSettings(); true }
         dndTile = makeTile(tf, R.drawable.ic_lock_dnd, "勿扰模式") {
             if (!QuickToggles.hasDndAccess(context)) {
                 showDndGrantHint()
@@ -292,7 +262,7 @@ class SleepLockView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = (10 * d).toInt() })
         panel.addView(TextView(context).apply {
-            text = "点系统静音切换 · 长按进声音与振动设置 · 上滑收起"
+            text = "点「声音与振动」进系统设置 · 勿扰可切换 · 上滑收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -341,8 +311,27 @@ class SleepLockView(
             dndHintRow.visibility = if (hasDnd) View.GONE else View.VISIBLE
         }
         setTileState(torchTile, QuickToggles.isTorch(), "手电筒")
-        setTileState(silentTile, QuickToggles.isSilent(context), "系统静音")
+        setTileState(silentTile, false, "声音与振动")
         setTileState(dndTile, QuickToggles.isDnd(context), if (hasDnd) "勿扰模式" else "勿扰模式 · 需授权")
+    }
+
+    private fun openSoundSettings() {
+        val intent = android.content.Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val ok = runCatching { context.startActivity(intent) }.isSuccess
+        if (!ok) {
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+        }
+        android.widget.Toast.makeText(
+            context,
+            if (ok) "已打开系统「声音与振动」" else "打不开系统设置页",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun showDndGrantHint() {
