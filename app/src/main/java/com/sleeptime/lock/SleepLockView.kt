@@ -46,8 +46,8 @@ class SleepLockView(
         const val DOT_STEP_MS = 30_000L
     }
 
-    private lateinit var title: TextView
-    private lateinit var ghost: TextView
+    private val title: TextView
+    private val ghost: TextView
     private lateinit var hint: TextView
 
     // ---- 下拉面板（只放第三方 App 真能做的开关）----

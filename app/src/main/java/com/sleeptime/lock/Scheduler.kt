@@ -21,7 +21,6 @@ object Scheduler {
     private const val RC_BACKUP = 1003
     private const val RC_WATCHDOG = 1004
     private const val RC_PREWARM = 1005
-    private const val RC_LIVENESS = 1006
 
     /** 预热：锁定时刻前 2 分钟先把服务叫醒，免得到点那一刻才冷启动 */
     private const val PREWARM_MS = 2 * 60_000L
@@ -90,8 +89,7 @@ object Scheduler {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val at = nextTriggerMillis(p.hour, p.minute)
 
-        p.pendingTrigger = at                       // 自检用：这一次「该锁」的时刻
-        Log.i(TAG, "armInternal at=$at enabled=" + p.enabled + " commit=" + p.pendingTrigger)
+        Log.i(TAG, "armInternal at=$at enabled=" + p.enabled)
         armOne(am, at, pending(ctx, RC, false), primary = true, tag = "主")
         if (withBackup) {
             armOne(am, at - PREWARM_MS, prewarmPending(ctx), primary = false, tag = "预热")
@@ -190,33 +188,7 @@ object Scheduler {
         runCatching { am.cancel(pending(ctx, RC_BACKUP, true)) }
         runCatching { am.cancel(watchdogPending(ctx)) }
         runCatching { am.cancel(prewarmPending(ctx)) }
-        runCatching { am.cancel(livenessPending(ctx)) }
     }
-
-    /**
-     * Liveness alarm. LockService re-arms this every ~10s to a point ~20s in
-     * the future. If ColorOS kills the process without calling onTaskRemoved /
-     * onDestroy, the last armed alarm still fires and revives LockService.
-     */
-    fun armLiveness(ctx: Context) {
-        val am = ctx.getSystemService(AlarmManager::class.java) ?: return
-        val pi = livenessPending(ctx)
-        val at = System.currentTimeMillis() + 20_000L
-        runCatching {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-        }.onFailure {
-            runCatching { am.set(AlarmManager.RTC_WAKEUP, at, pi) }
-        }
-    }
-
-    fun cancelLiveness(ctx: Context) {
-        runCatching { ctx.getSystemService(AlarmManager::class.java)?.cancel(livenessPending(ctx)) }
-    }
-
-    private fun livenessPending(ctx: Context): PendingIntent = PendingIntent.getBroadcast(
-        ctx, RC_LIVENESS, Intent(ctx, RestartReceiver::class.java),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
 
     /** 自愈：过 delayMs 把自己拉回来 */
     fun selfHeal(ctx: Context, delayMs: Long) {

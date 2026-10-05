@@ -31,12 +31,12 @@ class PhoneStateReceiver : BroadcastReceiver() {
 
         val p = Prefs(ctx)
         if (active) {
-            LockService.onExternalCallStart(ctx)
+            LockService.onCallActive(ctx)
             if (p.enabled) LockService.start(ctx)
             return
         }
 
-        LockService.onExternalCallEnd(ctx)
+        LockService.onCallIdle(ctx)
         if (!p.enabled) {
             LockService.unmuteNow(ctx)
             return

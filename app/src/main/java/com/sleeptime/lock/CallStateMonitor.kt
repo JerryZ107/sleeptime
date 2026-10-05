@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 package com.sleeptime.lock
 
 import android.Manifest
@@ -77,9 +78,9 @@ object CallStateMonitor {
         if (active == lastActive) return
         lastActive = active
         if (active) {
-            LockService.onExternalCallStart(ctx)
+            LockService.onCallActive(ctx)
         } else {
-            LockService.onExternalCallEnd(ctx)
+            LockService.onCallIdle(ctx)
         }
     }
 }

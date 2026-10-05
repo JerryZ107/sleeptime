@@ -62,8 +62,6 @@ class LockService : Service() {
          */
         private const val CALL_HOLD_MS = 6 * 60 * 60_000L
 
-        @Volatile private var externalCallHoldUntil = 0L
-
         private fun unmuteMic(ctx: Context) {
             runCatching { ctx.getSystemService(AudioManager::class.java).isMicrophoneMute = false }
         }
@@ -73,15 +71,12 @@ class LockService : Service() {
             live?.forceUnmuteMic()
         }
 
-        fun onExternalCallStart(ctx: Context) {
-            val until = System.currentTimeMillis() + CALL_HOLD_MS
-            externalCallHoldUntil = SystemClock.elapsedRealtime() + CALL_HOLD_MS
-            Prefs(ctx).callHoldUntil = until
+        fun onCallActive(ctx: Context) {
+            Prefs(ctx).callHoldUntil = System.currentTimeMillis() + CALL_HOLD_MS
             unmuteNow(ctx)
         }
 
-        fun onExternalCallEnd(ctx: Context) {
-            externalCallHoldUntil = 0L
+        fun onCallIdle(ctx: Context) {
             Prefs(ctx).callHoldUntil = 0L
         }
 
@@ -113,7 +108,6 @@ class LockService : Service() {
 
         fun stop(ctx: Context) {
             unmuteNow(ctx)
-            Scheduler.cancelLiveness(ctx)
             runCatching { ctx.stopService(Intent(ctx, LockService::class.java)) }
         }
 
@@ -162,19 +156,6 @@ class LockService : Service() {
         }
     }
 
-    /**
-     * Re-arms a 20s liveness alarm every 10s. If the process is killed without
-     * onDestroy (ColorOS recent-task kill), the last alarm fires and restores us.
-     */
-    private val liveness = object : Runnable {
-        override fun run() {
-            if (stopped) return
-            runCatching { Scheduler.armLiveness(this@LockService) }
-                .onFailure { trace("armLiveness failed: $it") }
-            h.postDelayed(this, 10_000L)
-        }
-    }
-
     /** 状态写文件 —— 绕过 ColorOS 对后台应用日志的屏蔽 */
     private fun trace(msg: String) {
         if (!TRACE_ENABLED) return
@@ -211,7 +192,6 @@ class LockService : Service() {
         runCatching { Scheduler.arm(this) }
         runCatching { Scheduler.armWatchdog(this) }   // 看门狗第一环
         h.postDelayed(ticker, 300L)
-        h.postDelayed(liveness, 1000L)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -366,8 +346,7 @@ class LockService : Service() {
 
     /** Uses the existing Prefs instance; no SharedPreferences churn on every tick. */
     private fun isCallHoldActive(): Boolean =
-        SystemClock.elapsedRealtime() < externalCallHoldUntil ||
-            prefs.callHoldUntil > System.currentTimeMillis()
+        prefs.callHoldUntil > System.currentTimeMillis()
 
     private fun applyMicMuted(target: Boolean) {
         runCatching {
@@ -401,7 +380,6 @@ class LockService : Service() {
                 }.getOrDefault(false)
                 if (lit) {
                     prefs.freezeCount = prefs.freezeCount + 1
-                    prefs.lastFreezeAt = now
                     if (gap > prefs.maxFreezeMs) prefs.maxFreezeMs = gap
                     trace("被冻结 ${gap / 1000} 秒（第 ${prefs.freezeCount} 次）")
                 } else {
@@ -418,7 +396,6 @@ class LockService : Service() {
     private fun enterLock() {
         trace("enterLock: 进入锁定态")
         prefs.lockedAt = System.currentTimeMillis()
-        prefs.lastLockAt = System.currentTimeMillis()   // 自检用：到点到底锁没锁上
         holdWakeLockBriefly()
         if (CallGuard.detect(this) || isCallHoldActive()) {
             forceUnmuteMic()

@@ -3,7 +3,6 @@ package com.sleeptime.lock
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 
@@ -18,17 +17,6 @@ class BootReceiver : BroadcastReceiver() {
         val p = Prefs(ctx)
         val action = intent?.action
 
-        // 自启动自检的命根子：系统只要把开机广播送进来，就先盖戳。
-        // 盖在 enabled 判断之前 —— 自检问的是「广播有没有到」，跟总开关无关。
-        // LOCKED_BOOT_COMPLETED 是「开机但还没解锁」时发的，比 BOOT_COMPLETED 早得多，
-        // 而且那时候 CE 存储还没挂上 —— 配置改存 DE 之后，这条广播才真正用得上。
-        if (action == Intent.ACTION_BOOT_COMPLETED ||
-            action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
-            action == "android.intent.action.QUICKBOOT_POWERON"
-        ) {
-            p.bootStamp = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-            p.bootSeenAt = System.currentTimeMillis()
-        }
         val inPeriod = Scheduler.inLockPeriod(p)
         val shouldLock = Scheduler.shouldLock(p)
         Log.i("SleepTime", "BootReceiver: $action enabled=${p.enabled} 时段内=$inPeriod 该锁=$shouldLock")

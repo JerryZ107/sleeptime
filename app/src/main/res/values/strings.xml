@@ -8,7 +8,7 @@
     <string name="sec_switch">锁定行为</string>
     <string name="sec_hold">解锁难度</string>
     <string name="sec_font">锁屏字体</string>
-    <string name="sec_perm">权限自检</string>
+    <string name="sec_perm">权限 / 设置</string>
     <string name="sec_action">操作</string>
     <string name="sec_help">使用说明 / 避坑</string>
 
@@ -28,8 +28,6 @@
     <string name="btn_pick_font">导入 .ttf</string>
     <string name="btn_reset_font">恢复内置</string>
     <string name="btn_fix">去授权</string>
-    <string name="btn_check">自检</string>
-    <string name="btn_direct">直达</string>
     <string name="btn_test">立即测试锁定</string>
     <string name="btn_stop_tonight">停用今晚</string>
     <string name="btn_uninstall">完全卸载</string>

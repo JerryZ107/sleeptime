@@ -110,7 +110,7 @@ class Prefs(context: Context) {
             sp.edit().putLong(K_CALL_HOLD, value).commit()
         }
 
-    /** 后台被系统冻结的次数 / 最长一次冻结多久 / 上次心跳时间（用于自检） */
+    /** 后台被系统冻结的次数 / 最长一次冻结多久（用于界面提示） */
     var freezeCount: Int
         get() = sp.getInt(K_FREEZE_N, 0)
         set(value) = sp.edit().putInt(K_FREEZE_N, value).apply()
@@ -123,39 +123,8 @@ class Prefs(context: Context) {
         get() = sp.getLong(K_LAST_TICK, 0L)
         set(value) = sp.edit().putLong(K_LAST_TICK, value).apply()
 
-    /**
-     * 下一次「该锁」的时刻：排闹钟时写进去。
-     * 自检就靠它跟 lastLockAt 对照 —— 到点了却没锁上，一眼就能看出来。
-     */
-    var pendingTrigger: Long
-        get() = sp.getLong(K_PENDING, 0L)
-        set(value) { sp.edit().putLong(K_PENDING, value).commit() }
-
-    /** 最近一次真的进入锁定态的时刻 */
-    var lastLockAt: Long
-        get() = sp.getLong(K_LAST_LOCK, 0L)
-        set(value) { sp.edit().putLong(K_LAST_LOCK, value).commit() }
-
-    /** 最近一次被系统冻结的时刻（自检「后台运行」那行要用） */
-    var lastFreezeAt: Long
-        get() = sp.getLong(K_FREEZE_LAST, 0L)
-        set(value) { sp.edit().putLong(K_FREEZE_LAST, value).commit() }
-
-    /**
-     * 开机自检的戳：BootReceiver 收到 BOOT_COMPLETED 时按下。
-     * bootStamp = 用 wall clock 反推的「本次开机时刻」，bootSeenAt = 收到广播的时刻。
-     * 两者只要和「当前这次开机」对得上，就说明自启动是真开着的 —— 这条骗不了人。
-     */
-    var bootStamp: Long
-        get() = sp.getLong(K_BOOT_STAMP, 0L)
-        set(value) { sp.edit().putLong(K_BOOT_STAMP, value).commit() }
-
-    var bootSeenAt: Long
-        get() = sp.getLong(K_BOOT_SEEN, 0L)
-        set(value) { sp.edit().putLong(K_BOOT_SEEN, value).commit() }
-
     fun resetFreezeStats() {
-        sp.edit().putInt(K_FREEZE_N, 0).putLong(K_FREEZE_MAX, 0L).putLong(K_FREEZE_LAST, 0L).apply()
+        sp.edit().putInt(K_FREEZE_N, 0).putLong(K_FREEZE_MAX, 0L).apply()
     }
 
     /** 是否记录诊断日志 */
@@ -211,10 +180,5 @@ class Prefs(context: Context) {
         private const val K_FREEZE_N = "freeze_count"
         private const val K_FREEZE_MAX = "freeze_max_ms"
         private const val K_LAST_TICK = "last_tick_at"
-        private const val K_FREEZE_LAST = "last_freeze_at"
-        private const val K_PENDING = "pending_trigger"
-        private const val K_LAST_LOCK = "last_lock_at"
-        private const val K_BOOT_STAMP = "boot_stamp"
-        private const val K_BOOT_SEEN = "boot_seen_at"
     }
 }

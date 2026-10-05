@@ -226,7 +226,7 @@ class MainActivity : AppCompatActivity() {
         val fz = prefs.freezeCount
         if (on && fz > 0) {
             b.tvNextAlarm.text = "⚠ 后台被系统冻结过 " + fz + " 次（最长 " + (prefs.maxFreezeMs / 1000) +
-                " 秒）—— 到点可能不会自动锁。看下面「权限自检」里变红的那行，点它的「直达」去开"
+                " 秒）—— 到点可能不会自动锁。去下面「耗电管理（应用详情-耗电管理）」，点右侧「去应用详情」，选「允许完全后台行为」"
             b.tvNextAlarm.setTextColor(color(R.color.warn))
         } else {
             b.tvNextAlarm.text = if (on) {
