@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat
 import com.sleeptime.lock.databinding.ActivityMainBinding
 import java.io.File
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Date
 import java.util.Locale
 
@@ -385,15 +386,47 @@ class MainActivity : AppCompatActivity() {
             .setTitle("每日锁定时间")
             .setView(box)
             .setPositiveButton("确定") { _, _ ->
-                prefs.hour = tp.hour
-                prefs.minute = tp.minute
-                prefs.lastUnlockAt = 0L
-                if (prefs.enabled) Scheduler.arm(this)
-                refresh()
-                toast("锁定时间已改为 " + String.format(Locale.US, "%02d:%02d", tp.hour, tp.minute))
+                tryChangeLockTime(tp.hour, tp.minute)
             }
             .setNegativeButton("取消", null)
             .show()
+    }
+
+    /**
+     * good2: 每天只允许改一次锁定时间，且最多向后延 15 分钟。
+     * 提前修改不限；不管提前还是延后，都消耗当天这一次机会。
+     */
+    private fun tryChangeLockTime(newHour: Int, newMinute: Int) {
+        val oldMin = prefs.hour * 60 + prefs.minute
+        val newMin = newHour * 60 + newMinute
+        if (oldMin == newMin) {
+            toast("锁定时间没有变化")
+            return
+        }
+
+        val today = LocalDate.now().toEpochDay()
+        if (prefs.lockTimeChangeDay == today) {
+            toast("今天已经修改过一次了，每天只能改一次")
+            return
+        }
+
+        // 取环形时间差里较短的方向：正数=延后，负数=提前
+        val delay = (newMin - oldMin + 1440) % 1440
+        val advance = 1440 - delay
+        val signed = if (delay <= advance) delay else -advance
+        if (signed > 15) {
+            toast("每天最多只能把锁定时间延后 15 分钟")
+            return
+        }
+
+        prefs.hour = newHour
+        prefs.minute = newMinute
+        prefs.lockTimeChangeDay = today
+        prefs.lastUnlockAt = 0L
+        if (prefs.enabled) Scheduler.arm(this)
+        refresh()
+        val mins = kotlin.math.abs(signed)
+        toast("锁定时间已" + (if (signed >= 0) "延后 " else "提前 ") + mins + " 分钟")
     }
 
     private fun pickUnlockTime() {

@@ -110,6 +110,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_NOTIFY_DETAIL, true)
         set(value) = sp.edit().putBoolean(K_NOTIFY_DETAIL, value).apply()
 
+    /** 最近一次成功修改锁定时间的本地日期（epochDay）；-1 = 从未修改 */
+    var lockTimeChangeDay: Long
+        get() = sp.getLong(K_LOCK_TIME_DAY, -1L)
+        set(value) { sp.edit().putLong(K_LOCK_TIME_DAY, value).commit() }
+
     /**
      * 通话保持到什么时候（wall clock，毫秒）。
      * 进程重启后也能知道刚才在通话中，避免服务重启的一瞬间把麦克风重新静音。
@@ -184,6 +189,7 @@ class Prefs(context: Context) {
         private const val K_MIC = "mic_mute"
         private const val K_SILENT = "silent_on"
         private const val K_NOTIFY_DETAIL = "notify_detail"
+        private const val K_LOCK_TIME_DAY = "lock_time_change_day"
         private const val K_CALL_HOLD = "call_hold_until"
         private const val K_FONT = "font_path"
         private const val K_MANUAL_HOLD = "manual_hold"

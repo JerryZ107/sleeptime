@@ -132,6 +132,10 @@
             <TextView
                 android:id="@+id/tvNextAlarm"
                 style="@style/Sub" />
+
+            <TextView
+                style="@style/Sub"
+                android:text="每天只能修改一次锁定时间；最多只能往后延 15 分钟，提前不限" />
         </LinearLayout>
 
         <!-- ================= 锁定行为 ================= -->
