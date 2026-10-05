@@ -413,18 +413,12 @@
                     android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <TextView style="@style/Label" android:text="自启动（国产 ROM 必须）" />
+                    <TextView style="@style/Label" android:text="自启动（设置-应用-自启动）" />
 
                     <TextView
                         android:id="@+id/tvBootState"
                         style="@style/Sub" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnBootCheck"
-                    style="@style/Btn.Ghost"
-                    android:layout_marginEnd="6dp"
-                    android:text="@string/btn_check" />
 
                 <TextView
                     android:id="@+id/btnBoot"
@@ -441,18 +435,12 @@
                     android:layout_weight="1"
                     android:orientation="vertical">
 
-                    <TextView style="@style/Label" android:text="后台运行 / 允许完全后台行为（必须）" />
+                    <TextView style="@style/Label" android:text="耗电管理（应用详情-耗电管理）" />
 
                     <TextView
                         android:id="@+id/tvBgState"
                         style="@style/Sub" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnBgCheck"
-                    style="@style/Btn.Ghost"
-                    android:layout_marginEnd="6dp"
-                    android:text="@string/btn_check" />
 
                 <TextView
                     android:id="@+id/btnBg"

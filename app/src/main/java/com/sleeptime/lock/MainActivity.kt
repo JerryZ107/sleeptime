@@ -85,12 +85,8 @@ class MainActivity : AppCompatActivity() {
         b.btnPhone.setOnClickListener { requestPhonePermission() }
         b.btnDnd.setOnClickListener { openDndSettings() }
         b.btnBattery.setOnClickListener { openBatterySettings() }
-        // 自启动：自检 + 直达，两个按钮各管一件事
-        b.btnBootCheck.setOnClickListener { manualSelfCheck(true) }
+        // 自启动 / 耗电管理：系统没有公开查询接口，只保留直达设置入口
         b.btnBoot.setOnClickListener { toast(SystemLinks.jumpStartup(this)) }
-
-        // 后台运行 / 允许完全后台行为：自检 + 直达
-        b.btnBgCheck.setOnClickListener { manualSelfCheck(false) }
         b.btnBg.setOnClickListener { toast(SystemLinks.jumpBackground(this)) }
 
         b.btnTest.setOnClickListener { startTestLock() }
@@ -279,11 +275,11 @@ class MainActivity : AppCompatActivity() {
         val battWhitelisted = getSystemService(PowerManager::class.java)
             .isIgnoringBatteryOptimizations(packageName)
 
-        // 自启动：只能实测反推 —— BootReceiver 有没有在这次开机收到开机广播
-        selfCheckRow(b.tvBootState, SystemLinks.checkStartup(this, prefs))
-
-        // 后台运行 / 允许完全后台行为：冻结记录 + 系统待机分桶，同样是实测反推
-        selfCheckRow(b.tvBgState, SystemLinks.checkBackground(this, prefs))
+        // 这两项 ColorOS 没有公开查询接口，不冒充自检，只提示去系统设置确认
+        b.tvBootState.text = "无法自检，请点右侧直达系统设置确认"
+        b.tvBootState.setTextColor(color(R.color.text_dim))
+        b.tvBgState.text = "无法自检，请点右侧直达系统设置确认"
+        b.tvBgState.setTextColor(color(R.color.text_dim))
 
 
         // System battery whitelist can be queried; ColorOS full background behavior cannot.
@@ -536,47 +532,6 @@ class MainActivity : AppCompatActivity() {
     /**
      * 自检结论落到一行字上：绿 = 实测通过，红 = 实测没过，灰 = 还测不出来。
      */
-    private fun selfCheckRow(tv: android.widget.TextView, c: SystemLinks.Check) {
-        tv.text = c.text
-        tv.setTextColor(
-            color(
-                when (c.state) {
-                    SystemLinks.OK -> R.color.ok
-                    SystemLinks.BAD -> R.color.warn
-                    else -> R.color.text_dim
-                }
-            )
-        )
-    }
-
-    /**
-     * 「自检」按钮。自启动那行只有「收到开机广播 / 没收到」两种硬结论，念出来就行；
-     * 后台那行只要不是「实测通过」，就给一个出口 —— 冻结记录是实测证据，
-     * 清掉才会从零开始重新计数，刚在系统里开好的用户可以马上验证。
-     */
-    private fun manualSelfCheck(startup: Boolean) {
-        val c = if (startup) SystemLinks.checkStartup(this, prefs)
-        else SystemLinks.checkBackground(this, prefs)
-        refresh()
-        if (!startup && c.state != SystemLinks.OK) {
-            AlertDialog.Builder(this)
-                .setTitle(if (c.state == SystemLinks.BAD) "自检结果：这一项没生效" else "自检结果：还测不出来")
-                .setMessage(
-                    c.text + "\n\n如果刚在系统设置里开好了「允许完全后台行为」，" +
-                        "可以把旧的冻结记录清掉，让守护服务从零开始实测："
-                )
-                .setPositiveButton("清掉记录，重新实测") { _, _ ->
-                    prefs.resetFreezeStats()
-                    refresh()
-                    toast("已清空。之后守护服务只要再被冻结一次，这行立刻变红")
-                }
-                .setNegativeButton("知道了", null)
-                .show()
-        } else {
-            toast(c.text)
-        }
-    }
-
     private fun openBatterySettings() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val direct = Intent(

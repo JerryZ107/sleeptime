@@ -254,6 +254,10 @@ class SleepLockView(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ))
+        panel.addView(dndHintRow, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (10 * d).toInt() })
         panel.addView(TextView(context).apply {
             text = "下滑展开 · 上滑 / 点空白收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
