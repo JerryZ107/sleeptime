@@ -225,8 +225,10 @@ class SleepLockView(
             android.widget.Toast.makeText(
                 context,
                 if (!ok) "系统静音切换失败，系统限制了铃声模式"
-                else if (on) "已切换为系统静音（铃声/通知/系统音，不影响媒体和闹钟）"
-                else "已恢复声音",
+                else if (on) {
+                    val dnd = if (QuickToggles.isDnd(context)) "开" else "关"
+                    "已切换为系统静音（不影响媒体/闹钟；勿扰：$dnd）"
+                } else "已恢复声音",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
             refreshTiles()
