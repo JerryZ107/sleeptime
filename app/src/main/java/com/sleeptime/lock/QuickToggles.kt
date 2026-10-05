@@ -34,9 +34,7 @@ object QuickToggles {
         AudioManager.STREAM_DTMF
     )
 
-    fun isSilent(ctx: Context): Boolean = runCatching {
-        ctx.getSystemService(AudioManager::class.java).isStreamMute(AudioManager.STREAM_RING)
-    }.getOrDefault(false)
+    fun isSilent(ctx: Context): Boolean = Prefs(ctx).silentOn
 
     /**
      * Mute/unmute only the notification/ring/system streams.
@@ -52,6 +50,7 @@ object QuickToggles {
         SILENT_STREAMS.filter { it != AudioManager.STREAM_RING }.forEach { stream ->
             runCatching { am.adjustStreamVolume(stream, direction, 0) }
         }
+        if (ringOk) Prefs(ctx).silentOn = on
         Log.i(TAG, "setSilent($on) ringOk=$ringOk streams=${SILENT_STREAMS.joinToString()}")
         ringOk
     }.onFailure { Log.w(TAG, "setSilent($on) failed", it) }.getOrDefault(false)

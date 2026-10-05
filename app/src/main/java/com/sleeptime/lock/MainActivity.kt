@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
 import android.widget.FrameLayout
@@ -84,7 +83,6 @@ class MainActivity : AppCompatActivity() {
         b.btnNoti.setOnClickListener { openNotificationSettings() }
         b.btnPhone.setOnClickListener { requestPhonePermission() }
         b.btnDnd.setOnClickListener { openDndSettings() }
-        b.btnBattery.setOnClickListener { openBatterySettings() }
         // 自启动 / 耗电管理：系统没有公开查询接口，只保留直达设置入口
         b.btnBoot.setOnClickListener { toast(SystemLinks.jumpStartup(this)) }
         b.btnBg.setOnClickListener { toast(SystemLinks.jumpBackground(this)) }
@@ -206,7 +204,6 @@ class MainActivity : AppCompatActivity() {
 
         b.tvHold.text = holdLabel(prefs.holdSeconds)
 
-
         val on = prefs.enabled
         b.tvStatusTitle.text = if (on) "已启用" else "已停用"
         b.tvStatusTitle.setTextColor(color(if (on) R.color.ok else R.color.warn))
@@ -271,25 +268,6 @@ class MainActivity : AppCompatActivity() {
         setPermission(b.tvDndState, b.btnDnd, dndOk,
             okText = "已授权",
             badText = "未授权 · 免打扰不可用；点右侧去系统设置允许")
-
-        val battWhitelisted = getSystemService(PowerManager::class.java)
-            .isIgnoringBatteryOptimizations(packageName)
-
-        // 这两项 ColorOS 没有公开查询接口，不冒充自检，只提示去系统设置确认
-        b.tvBootState.text = "系统锁了直达；点右侧去设置页，进「应用」-「自启动」打开"
-        b.tvBootState.setTextColor(color(R.color.text_dim))
-        b.tvBgState.text = "系统锁了直达；点右侧去应用详情，在里面找「耗电管理」"
-        b.tvBgState.setTextColor(color(R.color.text_dim))
-
-
-        // System battery whitelist can be queried; ColorOS full background behavior cannot.
-        b.tvBatteryState.text = if (battWhitelisted) {
-            "已加入系统电池优化白名单；无法检测 ColorOS 的“允许完全后台行为”，请点右侧去系统页确认"
-        } else {
-            "未加入系统电池优化白名单；无法检测 ColorOS 的“允许完全后台行为”，请点右侧去系统页确认"
-        }
-        b.tvBatteryState.setTextColor(color(if (battWhitelisted) R.color.ok else R.color.warn))
-        b.btnBattery.visibility = View.VISIBLE
 
         updateCountdown()
     }
@@ -527,16 +505,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
-    }
-
-    /** 电池优化/耗电管理没有公开直达页，统一去应用详情。 */
-    private fun openBatterySettings() {
-        runCatching {
-            startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-            )
-        }
-        toast("已打开应用详情，请在「耗电管理」里设置")
     }
 
     // --------------------------------------------------------------- 操作

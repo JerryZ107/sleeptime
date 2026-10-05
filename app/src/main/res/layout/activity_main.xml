@@ -448,27 +448,6 @@
                     android:text="@string/btn_goto_app_detail" />
             </LinearLayout>
 
-
-            <LinearLayout style="@style/PermissionRow">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView style="@style/Label" android:text="电池优化白名单（建议）" />
-
-                    <TextView
-                        android:id="@+id/tvBatteryState"
-                        style="@style/Sub" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnBattery"
-                    style="@style/Btn.Ghost"
-                    android:text="@string/btn_goto_app_detail" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- ================= 诊断日志 ================= -->
