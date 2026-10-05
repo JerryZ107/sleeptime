@@ -31,8 +31,18 @@ class PhoneStateReceiver : BroadcastReceiver() {
 
         val p = Prefs(ctx)
         if (active) {
-            LockService.onCallActive(ctx)
-            if (p.enabled) LockService.start(ctx)
+            val needService = p.enabled && (
+                LockService.running ||
+                    p.lockedAt > 0L ||
+                    Scheduler.shouldLock(p)
+                )
+            if (needService) {
+                LockService.onCallActive(ctx)
+                LockService.start(ctx)
+            } else {
+                // Not in a lock cycle: only release the microphone, do not wake the service.
+                LockService.unmuteNow(ctx)
+            }
             return
         }
 
