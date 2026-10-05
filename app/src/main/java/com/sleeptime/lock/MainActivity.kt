@@ -393,8 +393,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * good2: 每天只允许改一次锁定时间，且最多向后延 15 分钟。
-     * 提前修改不限；不管提前还是延后，都消耗当天这一次机会。
+     * good2: 逻辑日按 04:00 分界。
+     * 每个逻辑日最多改 2 次，每次最多向后延 10 分钟；提前不限。
+     * 23:30 -> 00:01 仍算延后（+31 分钟），因此会被 10 分钟上限拦下。
      */
     private fun tryChangeLockTime(newHour: Int, newMinute: Int) {
         val oldMin = prefs.hour * 60 + prefs.minute
@@ -404,29 +405,37 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val today = LocalDate.now().toEpochDay()
-        if (prefs.lockTimeChangeDay == today) {
-            toast("今天已经修改过一次了，每天只能改一次")
+        // 逻辑日：当天 04:00 到次日 04:00
+        val logicalDay = java.time.LocalDateTime.now()
+            .minusHours(4)
+            .toLocalDate()
+            .toEpochDay()
+        val used = if (prefs.lockTimeChangeDay == logicalDay) prefs.lockTimeChangeCount else 0
+        if (used >= 2) {
+            toast("本周期已经改过 2 次了，明天 04:00 后再试")
             return
         }
 
-        // 取环形时间差里较短的方向：正数=延后，负数=提前
-        val delay = (newMin - oldMin + 1440) % 1440
-        val advance = 1440 - delay
-        val signed = if (delay <= advance) delay else -advance
-        if (signed > 15) {
-            toast("每天最多只能把锁定时间延后 15 分钟")
+        // 按 04:00 分界排成一条 0..1439 的时间线：
+        // 23:30 -> 00:01 = +31 分钟，仍被认定为延后。
+        fun linearOfDay(minuteOfDay: Int): Int =
+            (minuteOfDay - 4 * 60 + 1440) % 1440
+
+        val delta = linearOfDay(newMin) - linearOfDay(oldMin)
+        if (delta > 10) {
+            toast("每次最多只能把锁定时间延后 10 分钟")
             return
         }
 
         prefs.hour = newHour
         prefs.minute = newMinute
-        prefs.lockTimeChangeDay = today
+        prefs.lockTimeChangeDay = logicalDay
+        prefs.lockTimeChangeCount = used + 1
         prefs.lastUnlockAt = 0L
         if (prefs.enabled) Scheduler.arm(this)
         refresh()
-        val mins = kotlin.math.abs(signed)
-        toast("锁定时间已" + (if (signed >= 0) "延后 " else "提前 ") + mins + " 分钟")
+        val verb = if (delta >= 0) "延后 " else "提前 "
+        toast("锁定时间已" + verb + kotlin.math.abs(delta) + " 分钟，本周期还可改 " + (2 - (used + 1)) + " 次")
     }
 
     private fun pickUnlockTime() {

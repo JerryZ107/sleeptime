@@ -39,6 +39,25 @@ class Prefs(context: Context) {
         de
     }
 
+    init {
+        migrateGood2Defaults()
+    }
+
+    /** good2 首次运行：默认改为 23:30 锁定 / 06:00 解锁，并清空修改次数 */
+    private fun migrateGood2Defaults() {
+        if (!sp.getBoolean(K_TIME_DEFAULTS_GOOD2, false)) {
+            sp.edit()
+                .putInt(K_HOUR, 23)
+                .putInt(K_MINUTE, 30)
+                .putInt(K_UHOUR, 6)
+                .putInt(K_UMINUTE, 0)
+                .putLong(K_LOCK_TIME_DAY, -1L)
+                .putInt(K_LOCK_TIME_COUNT, 0)
+                .putBoolean(K_TIME_DEFAULTS_GOOD2, true)
+                .commit()
+        }
+    }
+
     /** 总开关 */
     var enabled: Boolean
         get() = sp.getBoolean(K_ENABLED, false)
@@ -55,7 +74,7 @@ class Prefs(context: Context) {
 
     /** 每日自动解除锁定时刻（可以比锁定时刻小，表示跨午夜） */
     var unlockHour: Int
-        get() = sp.getInt(K_UHOUR, 7)
+        get() = sp.getInt(K_UHOUR, 6)
         set(value) = sp.edit().putInt(K_UHOUR, value).apply()
 
     var unlockMinute: Int
@@ -110,10 +129,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_NOTIFY_DETAIL, true)
         set(value) = sp.edit().putBoolean(K_NOTIFY_DETAIL, value).apply()
 
-    /** 最近一次成功修改锁定时间的本地日期（epochDay）；-1 = 从未修改 */
+    /** 最近一次成功修改锁定时间的逻辑日（epochDay，04:00 分界）；-1 = 从未修改 */
     var lockTimeChangeDay: Long
         get() = sp.getLong(K_LOCK_TIME_DAY, -1L)
         set(value) { sp.edit().putLong(K_LOCK_TIME_DAY, value).commit() }
+
+    /** 当前逻辑日已经修改过几次 */
+    var lockTimeChangeCount: Int
+        get() = sp.getInt(K_LOCK_TIME_COUNT, 0)
+        set(value) { sp.edit().putInt(K_LOCK_TIME_COUNT, value).commit() }
 
     /**
      * 通话保持到什么时候（wall clock，毫秒）。
@@ -190,6 +214,8 @@ class Prefs(context: Context) {
         private const val K_SILENT = "silent_on"
         private const val K_NOTIFY_DETAIL = "notify_detail"
         private const val K_LOCK_TIME_DAY = "lock_time_change_day"
+        private const val K_LOCK_TIME_COUNT = "lock_time_change_count"
+        private const val K_TIME_DEFAULTS_GOOD2 = "time_defaults_good2"
         private const val K_CALL_HOLD = "call_hold_until"
         private const val K_FONT = "font_path"
         private const val K_MANUAL_HOLD = "manual_hold"
