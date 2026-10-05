@@ -276,9 +276,9 @@ class MainActivity : AppCompatActivity() {
             .isIgnoringBatteryOptimizations(packageName)
 
         // 这两项 ColorOS 没有公开查询接口，不冒充自检，只提示去系统设置确认
-        b.tvBootState.text = "无法自检，请点右侧直达系统设置确认"
+        b.tvBootState.text = "系统锁了直达；点右侧去应用详情，在里面找「自启动」"
         b.tvBootState.setTextColor(color(R.color.text_dim))
-        b.tvBgState.text = "无法自检，请点右侧直达系统设置确认"
+        b.tvBgState.text = "系统锁了直达；点右侧去应用详情，在里面找「耗电管理」"
         b.tvBgState.setTextColor(color(R.color.text_dim))
 
 

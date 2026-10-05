@@ -423,7 +423,7 @@
                 <TextView
                     android:id="@+id/btnBoot"
                     style="@style/Btn.Ghost"
-                    android:text="@string/btn_direct" />
+                    android:text="@string/btn_goto_app_detail" />
             </LinearLayout>
 
             <!-- 2. 后台运行 / 允许完全后台行为 -->
@@ -445,7 +445,7 @@
                 <TextView
                     android:id="@+id/btnBg"
                     style="@style/Btn.Ghost"
-                    android:text="@string/btn_direct" />
+                    android:text="@string/btn_goto_app_detail" />
             </LinearLayout>
 
 

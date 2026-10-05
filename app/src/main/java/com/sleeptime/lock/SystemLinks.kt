@@ -61,8 +61,8 @@ object SystemLinks {
             return "已打开「自启动管理」：在列表里找到 SleepTime，把开关打开"
         }
         if (start(ctx, appDetails(ctx))) {
-            return "「自启动管理」被 ColorOS 的签名权限锁着，第三方 App 跳不进去。" +
-                "已打开本应用的应用详情页 —— 自启动要回 设置 → 应用 → 自启动，列表里搜 SleepTime"
+            return "自启动页被 ColorOS 签名权限锁死，普通 App 无法直达。" +
+                "已打开应用详情，请点里面的「自启动」"
         }
         return "跳转失败，请手动走 设置 → 应用 → 自启动 → SleepTime"
     }
@@ -83,8 +83,8 @@ object SystemLinks {
             return "已打开「耗电管理」：找到 SleepTime → 选「允许完全后台行为」"
         }
         if (start(ctx, appDetails(ctx))) {
-            return "ColorOS 不让第三方 App 直跳「耗电管理」。已打开应用详情页：" +
-                "点列表里的「耗电管理」→ 选「允许完全后台行为」"
+            return "耗电管理页被 ColorOS 权限锁死，普通 App 无法直达。" +
+                "已打开应用详情，请点「耗电管理」->「允许完全后台行为」"
         }
         return "跳转失败，请手动走 设置 → 应用 → SleepTime → 耗电管理"
     }
