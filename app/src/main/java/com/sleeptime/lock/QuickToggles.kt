@@ -34,21 +34,8 @@ object QuickToggles {
     /** 开/关静音；没授「勿扰权限」会失败并返回 false */
     fun setSilent(ctx: Context, on: Boolean): Boolean = runCatching {
         val am = ctx.getSystemService(AudioManager::class.java)
-        val nm = ctx.getSystemService(NotificationManager::class.java)
-        val canReadDnd = runCatching { nm.isNotificationPolicyAccessGranted }.getOrDefault(false)
-        val dndBefore = if (canReadDnd) runCatching { nm.currentInterruptionFilter }.getOrNull() else null
-
         am.ringerMode = if (on) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
-
-        val dndAfter = if (canReadDnd) runCatching { nm.currentInterruptionFilter }.getOrNull() else null
-        Log.i(TAG, "setSilent($on) -> ringerMode=${am.ringerMode} dndBefore=$dndBefore dndAfter=$dndAfter")
-
-        // Some ROMs couple ringer-silent with DND. The silent button must not touch DND:
-        // if DND changed, restore exactly the previous interruption filter.
-        if (dndBefore != null && dndAfter != null && dndBefore != dndAfter) {
-            runCatching { nm.setInterruptionFilter(dndBefore) }
-            Log.w(TAG, "silent changed DND ($dndBefore -> $dndAfter), restored to $dndBefore")
-        }
+        Log.i(TAG, "setSilent($on) -> ringerMode=${am.ringerMode}")
         true
     }.onFailure { Log.w(TAG, "setSilent($on) 失败", it) }.getOrDefault(false)
 
