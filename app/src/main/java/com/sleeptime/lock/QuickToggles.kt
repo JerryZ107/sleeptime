@@ -37,6 +37,25 @@ object QuickToggles {
     fun isSilent(ctx: Context): Boolean = Prefs(ctx).silentOn
 
     /**
+     * Reconcile our app-owned silent state with the real system state when the
+     * panel opens. DND is treated as a separate mode: if DND is on, its ringer
+     * changes must not rewrite the silent button state. If DND is off, ringer
+     * silent or stream mute means the system really is silent.
+     */
+    fun syncSilentState(ctx: Context) = runCatching {
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val dndOn = nm.isNotificationPolicyAccessGranted &&
+            nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+        if (dndOn) return@runCatching
+
+        val am = ctx.getSystemService(AudioManager::class.java)
+        val silent = am.ringerMode == AudioManager.RINGER_MODE_SILENT ||
+            am.isStreamMute(AudioManager.STREAM_RING) ||
+            am.isStreamMute(AudioManager.STREAM_NOTIFICATION)
+        Prefs(ctx).silentOn = silent
+    }.onFailure { Log.w(TAG, "syncSilentState failed", it) }
+
+    /**
      * Mute/unmute only the notification/ring/system streams.
      * This deliberately does NOT call setRingerMode: ColorOS couples ringer mode
      * with ZenModeHelper/DND, which made the old silent button toggle DND.
@@ -49,6 +68,14 @@ object QuickToggles {
         }.isSuccess
         SILENT_STREAMS.filter { it != AudioManager.STREAM_RING }.forEach { stream ->
             runCatching { am.adjustStreamVolume(stream, direction, 0) }
+        }
+        if (!on) {
+            val nm = ctx.getSystemService(NotificationManager::class.java)
+            val dndOn = nm.isNotificationPolicyAccessGranted &&
+                nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+            if (!dndOn && am.ringerMode == AudioManager.RINGER_MODE_SILENT) {
+                runCatching { am.ringerMode = AudioManager.RINGER_MODE_NORMAL }
+            }
         }
         if (ringOk) Prefs(ctx).silentOn = on
         Log.i(TAG, "setSilent($on) ringOk=$ringOk streams=${SILENT_STREAMS.joinToString()}")
@@ -74,7 +101,7 @@ object QuickToggles {
     fun isDnd(ctx: Context): Boolean = runCatching {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.isNotificationPolicyAccessGranted &&
-            nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
+            nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
     }.getOrDefault(false)
 
     fun setDnd(ctx: Context, on: Boolean): Boolean = runCatching {

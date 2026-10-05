@@ -343,6 +343,7 @@ class SleepLockView(
     private fun openPanel() {
         if (panelOpen) return
         panelOpen = true
+        QuickToggles.syncSilentState(context)
         refreshTiles()
         panel.visibility = View.VISIBLE
         panel.alpha = 1f
