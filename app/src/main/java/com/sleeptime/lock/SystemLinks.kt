@@ -60,6 +60,10 @@ object SystemLinks {
         if (start(ctx, direct)) {
             return "已打开「自启动管理」：在列表里找到 SleepTime，把开关打开"
         }
+        if (start(ctx, Intent(Settings.ACTION_SETTINGS))) {
+            return "自启动页被 ColorOS 签名权限锁死，普通 App 无法直达。" +
+                "已打开系统设置，请进「应用」-「自启动」打开 SleepTime"
+        }
         if (start(ctx, appDetails(ctx))) {
             return "自启动页被 ColorOS 签名权限锁死，普通 App 无法直达。" +
                 "已打开应用详情，请点里面的「自启动」"
