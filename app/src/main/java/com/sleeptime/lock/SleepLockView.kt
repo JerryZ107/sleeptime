@@ -56,6 +56,7 @@ class SleepLockView(
     private lateinit var silentTile: QuickTile
     private lateinit var dndTile: QuickTile
     private lateinit var clearTile: QuickTile
+    private lateinit var clearStatus: TextView
     private var panelOpen = false
     private var downY = 0f
     private var swipeUsed = false
@@ -247,6 +248,7 @@ class SleepLockView(
             }
         }
         clearTile = makeTile(tf, R.drawable.ic_lock_clear, "清理后台") {
+            setClearStatus("正在检查无障碍服务...", HINT_COLOR)
             val enabled = RecentsClearService.isEnabled(context)
             val svc = RecentsClearService.instance
             android.util.Log.i(
@@ -254,6 +256,7 @@ class SleepLockView(
                 "清理后台点击: enabled=" + enabled + " service=" + (svc != null)
             )
             if (!enabled) {
+                setClearStatus("未开启无障碍清理服务", 0x99FFD54A.toInt())
                 android.widget.Toast.makeText(
                     context,
                     "请先解锁，在 SleepTime 控制面板开启无障碍清理服务",
@@ -262,12 +265,14 @@ class SleepLockView(
             } else {
                 val lock = LockActivity.instance
                 if (lock == null) {
+                    setClearStatus("锁屏实例不存在", 0x99FFD54A.toInt())
                     android.widget.Toast.makeText(
                         context,
                         "锁屏实例不存在，无法临时解除屏幕固定",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 } else {
+                    setClearStatus("正在清理后台...", HINT_COLOR)
                     android.widget.Toast.makeText(
                         context,
                         "正在清理后台...",
@@ -305,6 +310,19 @@ class SleepLockView(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = (10 * d).toInt() })
+        clearStatus = TextView(context).apply {
+            text = ""
+            setTextColor(HINT_COLOR)
+            textSize = 10.5f
+            gravity = Gravity.CENTER
+            typeface = tf
+            visibility = View.GONE
+        }
+        panel.addView(clearStatus, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (10 * d).toInt() })
+
         panel.addView(TextView(context).apply {
             text = "点图标切换 · 清理后台需无障碍 · 上滑收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
@@ -328,6 +346,7 @@ class SleepLockView(
         }
         if (attempt >= 8) {
             LockActivity.instance?.repinAfterRecentsClear()
+            setClearStatus("无障碍服务未连接", 0x99FFD54A.toInt())
             android.widget.Toast.makeText(
                 context,
                 "无障碍服务未连接，请确认已开启后重试",
@@ -342,6 +361,7 @@ class SleepLockView(
         postDelayed({
             LockActivity.instance?.repinAfterRecentsClear()
             if (ok) {
+                setClearStatus("后台已清理", 0xFF4CAF50.toInt())
                 clearTile.icon.performHapticFeedback(
                     android.view.HapticFeedbackConstants.CONFIRM
                 )
@@ -361,6 +381,7 @@ class SleepLockView(
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             } else {
+                setClearStatus("清理失败：系统锁屏限制", 0x99FFD54A.toInt())
                 android.widget.Toast.makeText(
                     context,
                     "清理失败：系统锁屏时可能禁止打开最近任务，请解锁手机后重试",
@@ -368,6 +389,13 @@ class SleepLockView(
                 ).show()
             }
         }, 500L)
+    }
+
+    private fun setClearStatus(text: String, color: Int) {
+        if (!::clearStatus.isInitialized) return
+        clearStatus.text = text
+        clearStatus.setTextColor(color)
+        clearStatus.visibility = if (text.isBlank()) View.GONE else View.VISIBLE
     }
 
     private fun makeTile(tf: android.graphics.Typeface, icon: Int, label: String, onClick: () -> Unit): QuickTile {
