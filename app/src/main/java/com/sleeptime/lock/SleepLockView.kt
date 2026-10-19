@@ -249,12 +249,30 @@ class SleepLockView(
         clearTile = makeTile(tf, R.drawable.ic_lock_clear, "清理后台") {
             android.widget.Toast.makeText(context, "正在清理后台...", android.widget.Toast.LENGTH_SHORT).show()
             QuickToggles.clearBackground(context) { count ->
-                val msg = if (count > 0) {
-                    "已请求清理 " + count + " 个应用的后台进程"
+                if (count > 0) {
+                    clearTile.icon.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                    clearTile.icon.setColorFilter(0xFF4CAF50.toInt(), PorterDuff.Mode.SRC_IN)
+                    clearTile.icon.alpha = 1f
+                    clearTile.label.text = "已清理"
+                    clearTile.label.setTextColor(0xFF4CAF50.toInt())
+                    postDelayed({
+                        clearTile.icon.setColorFilter(HINT_COLOR, PorterDuff.Mode.SRC_IN)
+                        clearTile.icon.alpha = 0.75f
+                        clearTile.label.text = "清理后台"
+                        clearTile.label.setTextColor(HINT_COLOR)
+                    }, 1500)
+                    android.widget.Toast.makeText(
+                        context,
+                        "清理完成：已请求清理 " + count + " 个应用的后台进程",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
                 } else {
-                    "没有可清理的第三方后台应用"
+                    android.widget.Toast.makeText(
+                        context,
+                        "没有可清理的第三方后台应用",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
                 }
-                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
             }
         }
         for (item in listOf(torchTile, silentTile, dndTile, clearTile)) {
