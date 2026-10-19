@@ -55,7 +55,6 @@ class SleepLockView(
     private lateinit var torchTile: QuickTile
     private lateinit var silentTile: QuickTile
     private lateinit var dndTile: QuickTile
-    private lateinit var clearTile: QuickTile
     private var panelOpen = false
     private var downY = 0f
     private var swipeUsed = false
@@ -246,36 +245,7 @@ class SleepLockView(
                 refreshTiles()
             }
         }
-        clearTile = makeTile(tf, R.drawable.ic_lock_clear, "清理后台") {
-            android.widget.Toast.makeText(context, "正在清理后台...", android.widget.Toast.LENGTH_SHORT).show()
-            QuickToggles.clearBackground(context) { count ->
-                if (count > 0) {
-                    clearTile.icon.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                    clearTile.icon.setColorFilter(0xFF4CAF50.toInt(), PorterDuff.Mode.SRC_IN)
-                    clearTile.icon.alpha = 1f
-                    clearTile.label.text = "已清理"
-                    clearTile.label.setTextColor(0xFF4CAF50.toInt())
-                    postDelayed({
-                        clearTile.icon.setColorFilter(HINT_COLOR, PorterDuff.Mode.SRC_IN)
-                        clearTile.icon.alpha = 0.75f
-                        clearTile.label.text = "清理后台"
-                        clearTile.label.setTextColor(HINT_COLOR)
-                    }, 1500)
-                    android.widget.Toast.makeText(
-                        context,
-                        "清理完成：已请求清理 " + count + " 个应用的后台进程",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    android.widget.Toast.makeText(
-                        context,
-                        "没有可清理的第三方后台应用",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-        }
-        for (item in listOf(torchTile, silentTile, dndTile, clearTile)) {
+        for (item in listOf(torchTile, silentTile, dndTile)) {
             row.addView(item.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
         panel.addView(row, LinearLayout.LayoutParams(
@@ -301,7 +271,7 @@ class SleepLockView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = (10 * d).toInt() })
         panel.addView(TextView(context).apply {
-            text = "点图标切换 · 清理后台只清第三方后台进程 · 上滑收起"
+            text = "点系统静音切换 · 勿扰模式可单独切 · 上滑收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT

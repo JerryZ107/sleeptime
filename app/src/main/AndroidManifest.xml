@@ -21,8 +21,6 @@
 
     <!-- 来电监听：接电话 / 微信语音时立刻放开麦克风 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <!-- 勿扰权限：锁屏下拉面板的静音 / 免打扰需要它；没有它就不会出现在系统勿扰权限列表里 -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />

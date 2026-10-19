@@ -1,13 +1,9 @@
 package com.sleeptime.lock
 
-import android.app.ActivityManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.media.AudioManager
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 
@@ -117,33 +113,6 @@ object QuickToggles {
         Log.i(TAG, "setDnd($on) -> filter=${nm.currentInterruptionFilter}")
         true
     }.onFailure { Log.w(TAG, "setDnd($on) 失败", it) }.getOrDefault(false)
-
-    /**
-     * Best-effort background cleanup.
-     *
-     * Android does not expose a public "clear all recents" API to third-party apps.
-     * With KILL_BACKGROUND_PROCESSES we can only ask the system to kill the
-     * background processes of user-installed apps. Foreground services and system
-     * apps are intentionally left alone.
-     */
-    fun clearBackground(ctx: Context, done: (Int) -> Unit) {
-        Thread {
-            var requested = 0
-            runCatching {
-                val am = ctx.getSystemService(ActivityManager::class.java)
-                val apps = ctx.packageManager.getInstalledApplications(0)
-                for (app in apps) {
-                    if (app.packageName == ctx.packageName) continue
-                    if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) continue
-                    if (runCatching { am.killBackgroundProcesses(app.packageName) }.isSuccess) {
-                        requested++
-                    }
-                }
-            }.onFailure { Log.w(TAG, "clearBackground failed", it) }
-            Log.i(TAG, "clearBackground requested=$requested")
-            Handler(Looper.getMainLooper()).post { done(requested) }
-        }.start()
-    }
 
     fun isTorch(): Boolean = Torch.isOn
 
