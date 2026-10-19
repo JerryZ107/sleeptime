@@ -55,6 +55,7 @@ class SleepLockView(
     private lateinit var torchTile: QuickTile
     private lateinit var silentTile: QuickTile
     private lateinit var dndTile: QuickTile
+    private lateinit var clearTile: QuickTile
     private var panelOpen = false
     private var downY = 0f
     private var swipeUsed = false
@@ -245,7 +246,41 @@ class SleepLockView(
                 refreshTiles()
             }
         }
-        for (item in listOf(torchTile, silentTile, dndTile)) {
+        clearTile = makeTile(tf, R.drawable.ic_lock_clear, "清理后台") {
+            val enabled = RecentsClearService.isEnabled(context)
+            val svc = RecentsClearService.instance
+            android.util.Log.i(
+                "SleepTime",
+                "清理后台点击: enabled=" + enabled + " service=" + (svc != null)
+            )
+            if (!enabled) {
+                android.widget.Toast.makeText(
+                    context,
+                    "请先解锁，在 SleepTime 控制面板开启无障碍清理服务",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            } else {
+                val lock = LockActivity.instance
+                if (lock == null) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "锁屏实例不存在，无法临时解除屏幕固定",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        "正在清理后台...",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    // ColorOS unbinds accessibility services while the task is pinned.
+                    // Unpin first, wait for the service to reconnect, then clear.
+                    lock.unpinForRecentsClear()
+                    waitForRecentsService(0)
+                }
+            }
+        }
+        for (item in listOf(torchTile, silentTile, dndTile, clearTile)) {
             row.addView(item.root, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         }
         panel.addView(row, LinearLayout.LayoutParams(
@@ -271,7 +306,7 @@ class SleepLockView(
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = (10 * d).toInt() })
         panel.addView(TextView(context).apply {
-            text = "点系统静音切换 · 勿扰模式可单独切 · 上滑收起"
+            text = "点图标切换 · 清理后台需无障碍 · 上滑收起"
             setTextColor(0x66A8D8E0.toInt()); textSize = 10f; gravity = Gravity.CENTER; typeface = tf
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
@@ -283,6 +318,56 @@ class SleepLockView(
             leftMargin = (22 * d).toInt()
             rightMargin = (22 * d).toInt()
         })
+    }
+
+    private fun waitForRecentsService(attempt: Int) {
+        val svc = RecentsClearService.instance
+        if (svc != null) {
+            svc.clearRecents { ok -> finishRecentsClear(ok) }
+            return
+        }
+        if (attempt >= 8) {
+            LockActivity.instance?.repinAfterRecentsClear()
+            android.widget.Toast.makeText(
+                context,
+                "无障碍服务未连接，请确认已开启后重试",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        postDelayed({ waitForRecentsService(attempt + 1) }, 300L)
+    }
+
+    private fun finishRecentsClear(ok: Boolean) {
+        postDelayed({
+            LockActivity.instance?.repinAfterRecentsClear()
+            if (ok) {
+                clearTile.icon.performHapticFeedback(
+                    android.view.HapticFeedbackConstants.CONFIRM
+                )
+                clearTile.icon.setColorFilter(0xFF4CAF50.toInt(), PorterDuff.Mode.SRC_IN)
+                clearTile.icon.alpha = 1f
+                clearTile.label.text = "已清理"
+                clearTile.label.setTextColor(0xFF4CAF50.toInt())
+                postDelayed({
+                    clearTile.icon.setColorFilter(HINT_COLOR, PorterDuff.Mode.SRC_IN)
+                    clearTile.icon.alpha = 0.75f
+                    clearTile.label.text = "清理后台"
+                    clearTile.label.setTextColor(HINT_COLOR)
+                }, 1500)
+                android.widget.Toast.makeText(
+                    context,
+                    "后台已清理",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            } else {
+                android.widget.Toast.makeText(
+                    context,
+                    "清理失败：系统锁屏时可能禁止打开最近任务，请解锁手机后重试",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }, 500L)
     }
 
     private fun makeTile(tf: android.graphics.Typeface, icon: Int, label: String, onClick: () -> Unit): QuickTile {

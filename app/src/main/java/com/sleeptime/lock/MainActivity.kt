@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         b.btnNoti.setOnClickListener { openNotificationSettings() }
         b.btnPhone.setOnClickListener { requestPhonePermission() }
         b.btnDnd.setOnClickListener { openDndSettings() }
+        b.btnAccess.setOnClickListener { openAccessibilitySettings() }
         // 自启动 / 耗电管理：系统没有公开查询接口，只保留直达设置入口
         b.btnBoot.setOnClickListener { toast(SystemLinks.jumpStartup(this)) }
         b.btnBg.setOnClickListener { toast(SystemLinks.jumpBackground(this)) }
@@ -276,6 +277,11 @@ class MainActivity : AppCompatActivity() {
         setPermission(b.tvDndState, b.btnDnd, dndOk,
             okText = "已授权",
             badText = "未授权 · 免打扰不可用；点右侧去系统设置允许")
+
+        val accessOk = RecentsClearService.isEnabled(this)
+        setPermission(b.tvAccessState, b.btnAccess, accessOk,
+            okText = "已开启 · 锁屏面板清理后台可用",
+            badText = "未开启 · 锁屏面板清理后台不可用")
 
         updateCountdown()
     }
@@ -518,6 +524,11 @@ class MainActivity : AppCompatActivity() {
         val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
         runCatching { startActivity(i) }
             .onFailure { runCatching { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)) } }
+    }
+
+    private fun openAccessibilitySettings() {
+        runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            .onFailure { toast("打不开无障碍设置") }
     }
 
     private fun openExactAlarmSettings() {

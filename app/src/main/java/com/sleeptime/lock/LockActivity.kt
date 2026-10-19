@@ -156,6 +156,17 @@ class LockActivity : AppCompatActivity() {
         // no-op
     }
 
+    /** 清理后台前临时解除屏幕固定，让最近任务能被打开 */
+    fun unpinForRecentsClear() {
+        runCatching { stopLockTask() }
+    }
+
+    /** 清理完成后重新固定锁屏 */
+    fun repinAfterRecentsClear() {
+        lastPinAttemptAt = 0L
+        tryPin()
+    }
+
     /** 来电期间主动退场，挂断后由 LockService 的看门狗重新拉起来 */
     fun stepAsideForCall() {
         visible = false
